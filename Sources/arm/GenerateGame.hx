@@ -5,7 +5,7 @@ import iron.system.Time;
 class GenerateGame extends iron.Trait {
 	@prop 
 	var speed:Float;
-	var totalTicks:Int = 100;
+	var totalTicks:Int;
 	@prop
 	var totalTime:Float;
 	var currentTick:Int = 0;
@@ -16,18 +16,12 @@ class GenerateGame extends iron.Trait {
 		super();
 
 		notifyOnInit(function() {
-			tickInterval = (totalTime/totalTicks) * speed;
-			trace("Generating Game. Tick interval: " + tickInterval);
-
-			//Generate grid - radius 4
+			//Generates grid
 			var radius = 10; //Final radius is this minus 1
 			var data = InitGame.inst.hexTilesData;
 			var index = 0;
 			var distance = 0;
 			var temp:Array<{i:Int, x:Int, y:Int, z:Int, t:Int, v:Int, p:Int}> = [];
-			// 	{i:0, x:0, y:0, z:0, t:'Home', v:1000, p:1000}
-			// ];
-			// data.unshift(temp);
 			for (q in -radius...radius+1) { //Iterates through all possible hexagon positions
 				for (r in -radius...radius+1) {
 					for (s in -radius...radius+1) {
@@ -47,14 +41,30 @@ class GenerateGame extends iron.Trait {
 					}
 				}
 			}
-			trace(data[0][0].v);
-			
+			InitGame.inst.totalTiles = index;
+			totalTicks = index*2;
+			tickInterval = (totalTime/totalTicks) * speed;
+			trace("Generating Game. Tick interval: " + tickInterval);
+			trace('TotalTicks :' + totalTicks);
 			
 		});
 
 		notifyOnUpdate(function() {
+			var data = InitGame.inst.hexTilesData;
 			while ((currentTick <= totalTicks) && (currentTime > (currentTick*tickInterval))) {
-				//trace(currentTick);
+				// First half place tiles
+				if (currentTick < InitGame.inst.totalTiles) {
+					iron.Scene.active.spawnObject('contHex', null, function(o:Object) {
+						o.transform.loc.x = 1*(Math.sqrt(3)*data[currentTick][0].x + Math.sqrt(3)/2*data[currentTick][0].y);
+						o.transform.loc.y = 1*(3/2*data[currentTick][0].y);
+						o.transform.loc.z = 0.0;
+						o.transform.buildMatrix();
+					});
+				}
+
+				// Second half place type objects
+
+
 				currentTick += 1;
 			}
 			currentTime += Time.delta;

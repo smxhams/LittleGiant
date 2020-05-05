@@ -402,12 +402,9 @@ var arm_GenerateGame = function() {
 	this.tickInterval = 0.0;
 	this.currentTime = 0.0;
 	this.currentTick = 0;
-	this.totalTicks = 100;
 	var _gthis = this;
 	iron_Trait.call(this);
 	this.notifyOnInit(function() {
-		_gthis.tickInterval = _gthis.totalTime / _gthis.totalTicks * _gthis.speed;
-		haxe_Log.trace("Generating Game. Tick interval: " + _gthis.tickInterval,{ fileName : "arm/GenerateGame.hx", lineNumber : 20, className : "arm.GenerateGame", methodName : "new"});
 		var radius = 10;
 		var data = arm_InitGame.inst.hexTilesData;
 		var index = 0;
@@ -440,17 +437,32 @@ var arm_GenerateGame = function() {
 				}
 			}
 		}
-		haxe_Log.trace(data[0][0].v,{ fileName : "arm/GenerateGame.hx", lineNumber : 50, className : "arm.GenerateGame", methodName : "new"});
+		arm_InitGame.inst.totalTiles = index;
+		_gthis.totalTicks = index * 2;
+		_gthis.tickInterval = _gthis.totalTime / _gthis.totalTicks * _gthis.speed;
+		haxe_Log.trace("Generating Game. Tick interval: " + _gthis.tickInterval,{ fileName : "arm/GenerateGame.hx", lineNumber : 47, className : "arm.GenerateGame", methodName : "new"});
+		haxe_Log.trace("TotalTicks :" + _gthis.totalTicks,{ fileName : "arm/GenerateGame.hx", lineNumber : 48, className : "arm.GenerateGame", methodName : "new"});
 	});
 	this.notifyOnUpdate(function() {
-		while(_gthis.currentTick <= _gthis.totalTicks && _gthis.currentTime > _gthis.currentTick * _gthis.tickInterval) _gthis.currentTick += 1;
+		var data1 = arm_InitGame.inst.hexTilesData;
+		while(_gthis.currentTick <= _gthis.totalTicks && _gthis.currentTime > _gthis.currentTick * _gthis.tickInterval) {
+			if(_gthis.currentTick < arm_InitGame.inst.totalTiles) {
+				iron_Scene.active.spawnObject("contHex",null,function(o) {
+					o.transform.loc.x = Math.sqrt(3) * data1[_gthis.currentTick][0].x + Math.sqrt(3) / 2 * data1[_gthis.currentTick][0].y;
+					o.transform.loc.y = 1.5 * data1[_gthis.currentTick][0].y;
+					o.transform.loc.z = 0.0;
+					o.transform.buildMatrix();
+				});
+			}
+			_gthis.currentTick += 1;
+		}
 		_gthis.currentTime += 0.016666666666666666 * iron_system_Time.scale;
 		if(_gthis.currentTick > _gthis.totalTicks) {
 			_gthis.object.remove();
 		}
 	});
 	this.notifyOnRemove(function() {
-		iron_Scene.active.spawnObject("contGame",null,function(o) {
+		iron_Scene.active.spawnObject("contGame",null,function(o1) {
 		});
 	});
 };
@@ -494,6 +506,7 @@ arm_InitGame.prototype = $extend(iron_Trait.prototype,{
 	hexTilesObjects: null
 	,hexTilesData: null
 	,homeIndex: null
+	,totalTiles: null
 	,difficulty: null
 	,music1: null
 	,music2: null
