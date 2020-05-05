@@ -225,6 +225,12 @@ void frag_main()
     fragColor = float4(envl.x, envl.y, envl.z, fragColor.w);
     float3 _849 = fragColor.xyz * ssaotex.SampleLevel(_ssaotex_sampler, texCoord, 0.0f).x;
     fragColor = float4(_849.x, _849.y, _849.z, fragColor.w);
+    if (g0.w == 1.0f)
+    {
+        float3 _861 = fragColor.xyz + g1.xyz;
+        fragColor = float4(_861.x, _861.y, _861.z, fragColor.w);
+        albedo = 0.0f.xxx;
+    }
     float3 sh = normalize(v + sunDir);
     float sdotNH = dot(n, sh);
     float sdotVH = dot(v, sh);
@@ -232,8 +238,8 @@ void frag_main()
     float svisibility = 1.0f;
     float3 sdirect = lambertDiffuseBRDF(albedo, sdotNL) + (specularBRDF(f0, roughness, sdotNL, sdotNH, dotNV, sdotVH) * occspec.y);
     svisibility = shadowTestCascade(shadowMap, _shadowMap_sampler, eye, p + ((n * shadowsBias) * 10.0f), shadowsBias);
-    float3 _906 = fragColor.xyz + ((sdirect * svisibility) * sunCol);
-    fragColor = float4(_906.x, _906.y, _906.z, fragColor.w);
+    float3 _918 = fragColor.xyz + ((sdirect * svisibility) * sunCol);
+    fragColor = float4(_918.x, _918.y, _918.z, fragColor.w);
     fragColor.w = 1.0f;
 }
 

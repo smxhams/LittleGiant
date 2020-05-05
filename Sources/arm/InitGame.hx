@@ -6,10 +6,12 @@ class InitGame extends iron.Trait {
 
 	//Game libraries
 	public var hexTilesObjects = new List<Object>();
-	public var hexTilesData:Dynamic;
+	public var hexTilesData = new Array<Dynamic>();
+	public var homeIndex:Int;
 	
 
 	public var difficulty:String;
+
 
 	//Sound
 	public var music1:AudioChannel;
