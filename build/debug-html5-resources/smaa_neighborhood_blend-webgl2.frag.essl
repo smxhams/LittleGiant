@@ -1,0 +1,64 @@
+#version 300 es
+precision mediump float;
+precision highp int;
+
+uniform highp sampler2D blendTex;
+uniform highp sampler2D colorTex;
+uniform highp vec2 screenSizeInv;
+
+out highp vec4 fragColor;
+in highp vec2 texCoord;
+in highp vec4 offset;
+
+highp vec4 textureLodA(highp sampler2D tex, highp vec2 coords, highp float lod)
+{
+    return textureLod(tex, coords, lod);
+}
+
+highp vec4 SMAANeighborhoodBlendingPS(highp vec2 texcoord, highp vec4 offset_1)
+{
+    highp vec4 a;
+    a.x = textureLod(blendTex, offset_1.xy, 0.0).w;
+    a.y = textureLod(blendTex, offset_1.zw, 0.0).y;
+    highp vec2 _54 = textureLod(blendTex, texcoord, 0.0).xz;
+    a = vec4(a.x, a.y, _54.y, _54.x);
+    if (dot(a, vec4(1.0)) < 9.9999997473787516355514526367188e-06)
+    {
+        highp vec4 color = textureLod(colorTex, texcoord, 0.0);
+        return color;
+    }
+    else
+    {
+        bool h = max(a.x, a.z) > max(a.y, a.w);
+        highp vec4 blendingOffset = vec4(0.0, a.y, 0.0, a.w);
+        highp vec2 blendingWeight = a.yw;
+        if (h)
+        {
+            blendingOffset.x = a.x;
+            blendingOffset.y = 0.0;
+            blendingOffset.z = a.z;
+            blendingOffset.w = 0.0;
+            blendingWeight.x = a.x;
+            blendingWeight.y = a.z;
+        }
+        blendingWeight /= vec2(dot(blendingWeight, vec2(1.0)));
+        highp vec2 tc = texcoord;
+        highp vec4 blendingCoord = (blendingOffset * vec4(screenSizeInv, -screenSizeInv)) + tc.xyxy;
+        highp vec2 param = blendingCoord.xy;
+        highp float param_1 = 0.0;
+        highp vec4 color_1 = textureLodA(colorTex, param, param_1) * blendingWeight.x;
+        highp vec2 param_2 = blendingCoord.zw;
+        highp float param_3 = 0.0;
+        color_1 += (textureLodA(colorTex, param_2, param_3) * blendingWeight.y);
+        return color_1;
+    }
+    return vec4(0.0);
+}
+
+void main()
+{
+    highp vec2 param = texCoord;
+    highp vec4 param_1 = offset;
+    fragColor = SMAANeighborhoodBlendingPS(param, param_1);
+}
+

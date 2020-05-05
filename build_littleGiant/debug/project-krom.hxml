@@ -1,0 +1,76 @@
+-cp C:\MyFiles\ArmorySDK2004\ArmorySDK\Kha\Sources
+-cp C:\MyFiles\ArmorySDK2004\ArmorySDK\Kha\Backends\Krom
+-cp C:\MyFiles\littleGiant-HOME\LittleGiant\Sources
+-cp C:\MyFiles\ArmorySDK2004\ArmorySDK\armory\Sources
+-cp C:\MyFiles\ArmorySDK2004\ArmorySDK\iron\Sources
+-cp C:\MyFiles\ArmorySDK2004\ArmorySDK\lib\zui\Sources
+-cp C:/MyFiles/ArmorySDK2004/ArmorySDK/armory
+-cp C:/MyFiles/ArmorySDK2004/ArmorySDK/iron
+-cp C:/MyFiles/ArmorySDK2004/ArmorySDK/lib/zui
+-D hxcpp_smart_strings
+-D C:/MyFiles/ArmorySDK2004/ArmorySDK/armory
+-D C:/MyFiles/ArmorySDK2004/ArmorySDK/iron
+-D C:/MyFiles/ArmorySDK2004/ArmorySDK/lib/zui
+-D arm_deferred
+-D arm_csm
+-D rp_hdr
+-D rp_renderer=Deferred
+-D rp_shadowmap
+-D rp_shadowmap_cascade=1024
+-D rp_shadowmap_cube=512
+-D rp_background=World
+-D rp_render_to_texture
+-D rp_compositornodes
+-D rp_antialiasing=SMAA
+-D rp_supersampling=1
+-D rp_ssgi=SSAO
+-D arm_audio
+-D arm_patch
+-D arm_noembed
+-D arm_soundcompress
+-D arm_debug
+-D arm_ui
+-D arm_stream
+-D arm_skin
+-D arm_particles
+-D arm_config
+-D arm_resizable
+-D sys_krom
+-D sys_g1
+-D sys_g2
+-D sys_g3
+-D sys_g4
+-D sys_a1
+-D sys_a2
+-D kha_js
+-D kha_krom
+-D kha_krom_js
+-D kha_direct3d11
+-D kha_g1
+-D kha_g2
+-D kha_g3
+-D kha_g4
+-D kha_a1
+-D kha_a2
+-D kha
+-D kha_version=1810
+-D kha_project_name=littleGiant
+-js krom\krom.js.temp
+arm.MainGame
+--macro keep('arm.MainGame')
+arm.GenerateGame
+--macro keep('arm.GenerateGame')
+arm.MainMenu
+--macro keep('arm.MainMenu')
+armory.trait.internal.LivePatch
+--macro keep('armory.trait.internal.LivePatch')
+armory.trait.internal.DebugConsole
+--macro keep('armory.trait.internal.DebugConsole')
+armory.trait.internal.CanvasScript
+--macro keep('armory.trait.internal.CanvasScript')
+arm.InitGame
+--macro keep('arm.InitGame')
+armory.trait.internal.Bridge
+--macro keep('armory.trait.internal.Bridge')
+--times
+-main Main

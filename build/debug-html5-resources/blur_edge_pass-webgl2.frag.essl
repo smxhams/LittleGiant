@@ -1,0 +1,60 @@
+#version 300 es
+precision mediump float;
+precision highp int;
+
+uniform highp sampler2D gbuffer0;
+uniform highp sampler2D tex;
+uniform highp vec2 dirInv;
+
+in highp vec2 texCoord;
+out highp float fragColor;
+
+highp vec2 octahedronWrap(highp vec2 v)
+{
+    return (vec2(1.0) - abs(v.yx)) * vec2((v.x >= 0.0) ? 1.0 : (-1.0), (v.y >= 0.0) ? 1.0 : (-1.0));
+}
+
+highp vec3 getNor(highp vec2 enc)
+{
+    highp vec3 n;
+    n.z = (1.0 - abs(enc.x)) - abs(enc.y);
+    highp vec2 _53;
+    if (n.z >= 0.0)
+    {
+        _53 = enc;
+    }
+    else
+    {
+        _53 = octahedronWrap(enc);
+    }
+    n = vec3(_53.x, _53.y, n.z);
+    n = normalize(n);
+    return n;
+}
+
+void main()
+{
+    highp vec3 nor = getNor(textureLod(gbuffer0, texCoord, 0.0).xy);
+    fragColor = textureLod(tex, texCoord, 0.0).x * 0.132571995258331298828125;
+    highp float weight = 0.132571995258331298828125;
+    for (int i = 1; i < 8; i++)
+    {
+        highp float posadd = float(i);
+        highp vec3 nor2 = getNor(textureLod(gbuffer0, texCoord + (dirInv * float(i)), 0.0).xy);
+        highp float influenceFactor = step(0.949999988079071044921875, dot(nor2, nor));
+        highp float col = textureLod(tex, texCoord + (dirInv * posadd), 0.0).x;
+        highp float indexable[10] = float[](0.132571995258331298828125, 0.12547199428081512451171875, 0.10637299716472625732421875, 0.0807799994945526123046875, 0.0549499988555908203125, 0.03348200023174285888671875, 0.018275000154972076416015625, 0.008933999575674533843994140625, 0.00391199998557567596435546875, 0.00153500004671514034271240234375);
+        highp float w = indexable[i] * influenceFactor;
+        fragColor += (col * w);
+        weight += w;
+        nor2 = getNor(textureLod(gbuffer0, texCoord - (dirInv * float(i)), 0.0).xy);
+        influenceFactor = step(0.949999988079071044921875, dot(nor2, nor));
+        col = textureLod(tex, texCoord - (dirInv * posadd), 0.0).x;
+        highp float indexable_1[10] = float[](0.132571995258331298828125, 0.12547199428081512451171875, 0.10637299716472625732421875, 0.0807799994945526123046875, 0.0549499988555908203125, 0.03348200023174285888671875, 0.018275000154972076416015625, 0.008933999575674533843994140625, 0.00391199998557567596435546875, 0.00153500004671514034271240234375);
+        w = indexable_1[i] * influenceFactor;
+        fragColor += (col * w);
+        weight += w;
+    }
+    fragColor /= weight;
+}
+

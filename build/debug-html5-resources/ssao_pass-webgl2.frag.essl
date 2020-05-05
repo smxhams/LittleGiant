@@ -1,0 +1,82 @@
+#version 300 es
+precision mediump float;
+precision highp int;
+
+uniform highp sampler2D gbufferD;
+uniform highp sampler2D gbuffer0;
+uniform highp vec3 eyeLook;
+uniform highp vec2 cameraProj;
+uniform highp vec2 screenSize;
+uniform highp vec3 eye;
+uniform highp mat4 invVP;
+uniform highp vec3 PPComp11;
+uniform highp vec3 PPComp12;
+
+in highp vec2 texCoord;
+out highp float fragColor;
+in highp vec3 viewRay;
+
+highp vec2 octahedronWrap(highp vec2 v)
+{
+    return (vec2(1.0) - abs(v.yx)) * vec2((v.x >= 0.0) ? 1.0 : (-1.0), (v.y >= 0.0) ? 1.0 : (-1.0));
+}
+
+highp vec3 getPosNoEye(highp vec3 eyeLook_1, highp vec3 viewRay_1, highp float depth, highp vec2 cameraProj_1)
+{
+    highp float linearDepth = cameraProj_1.y / (((depth * 0.5) + 0.5) - cameraProj_1.x);
+    highp float viewZDist = dot(eyeLook_1, viewRay_1);
+    highp vec3 wposition = viewRay_1 * (linearDepth / viewZDist);
+    return wposition;
+}
+
+highp vec3 getPos2NoEye(highp vec3 eye_1, highp mat4 invVP_1, highp float depth, highp vec2 coord)
+{
+    highp vec4 pos = vec4((coord * 2.0) - vec2(1.0), depth, 1.0);
+    pos = invVP_1 * pos;
+    highp vec3 _87 = pos.xyz / vec3(pos.w);
+    pos = vec4(_87.x, _87.y, _87.z, pos.w);
+    return pos.xyz - eye_1;
+}
+
+void main()
+{
+    highp float depth = (textureLod(gbufferD, texCoord, 0.0).x * 2.0) - 1.0;
+    if (depth == 1.0)
+    {
+        fragColor = 1.0;
+        return;
+    }
+    highp vec2 enc = textureLod(gbuffer0, texCoord, 0.0).xy;
+    highp vec3 n;
+    n.z = (1.0 - abs(enc.x)) - abs(enc.y);
+    highp vec2 _136;
+    if (n.z >= 0.0)
+    {
+        _136 = enc;
+    }
+    else
+    {
+        _136 = octahedronWrap(enc);
+    }
+    n = vec3(_136.x, _136.y, n.z);
+    n = normalize(n);
+    highp vec3 vray = normalize(viewRay);
+    highp vec3 currentPos = getPosNoEye(eyeLook, vray, depth, cameraProj);
+    highp float currentDistance = length(currentPos);
+    highp float currentDistanceA = (currentDistance * 20.0) * 1.0;
+    highp float currentDistanceB = currentDistance * 0.0005000000237487256526947021484375;
+    ivec2 px = ivec2(texCoord * screenSize);
+    highp float phi = float(((3 * px.x) ^ (px.y + (px.x * px.y))) * 10);
+    fragColor = 0.0;
+    for (int i = 0; i < 8; i++)
+    {
+        highp float theta = (0.785398185253143310546875 * (float(i) + 0.5)) + phi;
+        highp vec2 k = vec2(cos(theta), sin(theta)) / vec2(currentDistanceA);
+        depth = (textureLod(gbufferD, texCoord + k, 0.0).x * 2.0) - 1.0;
+        highp vec3 pos = getPos2NoEye(eye, invVP, depth, texCoord + k) - currentPos;
+        fragColor += (max(0.0, dot(pos, n) - currentDistanceB) / (dot(pos, pos) + 0.014999999664723873138427734375));
+    }
+    fragColor *= 0.037500001490116119384765625;
+    fragColor = 1.0 - fragColor;
+}
+
