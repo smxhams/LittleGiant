@@ -8,6 +8,7 @@ class InitGame extends iron.Trait {
 	public var hexTilesObjects = new List<Object>();
 	public var hexTilesData = new Array<Dynamic>();
 	public var homeIndex:Int;
+	public var totalTiles:Int;
 	
 
 	public var difficulty:String;
