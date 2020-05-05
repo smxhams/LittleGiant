@@ -8,6 +8,7 @@
 #define _Sun
 #define _SMAA
 #define _SSAO
+#define _Emission
 #define _CToneFilmic
 #if defined(HLSL) || defined(METAL)
 #define _InvY
