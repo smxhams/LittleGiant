@@ -1,26 +1,19 @@
-uniform float4 casData[20];
 uniform float4 shirr[7];
 uniform float3 backgroundCol;
 uniform float envmapStrength;
 uniform float3 sunDir;
-uniform bool receiveShadow;
-Texture2D<float4> shadowMap;
-SamplerComparisonState _shadowMap_sampler;
-uniform float3 eye;
-uniform float shadowsBias;
 uniform float3 sunCol;
+uniform bool receiveShadow;
 
 static float4 gl_FragCoord;
 static float3 wnormal;
 static float3 eyeDir;
-static float3 wposition;
 static float4 fragColor[2];
 
 struct SPIRV_Cross_Input
 {
     float3 eyeDir : TEXCOORD0;
     float3 wnormal : TEXCOORD1;
-    float3 wposition : TEXCOORD2;
     float4 gl_FragCoord : SV_Position;
 };
 
@@ -51,84 +44,6 @@ float3 shIrradiance(float3 nor)
     float3 cl21 = float3(shirr[5].y, shirr[5].z, shirr[5].w);
     float3 cl22 = float3(shirr[6].x, shirr[6].y, shirr[6].z);
     return ((((((((((cl22 * 0.429042994976043701171875f) * ((nor.y * nor.y) - ((-nor.z) * (-nor.z)))) + (((cl20 * 0.743125021457672119140625f) * nor.x) * nor.x)) + (cl00 * 0.88622701168060302734375f)) - (cl20 * 0.2477079927921295166015625f)) + (((cl2m2 * 0.85808598995208740234375f) * nor.y) * (-nor.z))) + (((cl21 * 0.85808598995208740234375f) * nor.y) * nor.x)) + (((cl2m1 * 0.85808598995208740234375f) * (-nor.z)) * nor.x)) + ((cl11 * 1.02332794666290283203125f) * nor.y)) + ((cl1m1 * 1.02332794666290283203125f) * (-nor.z))) + ((cl10 * 1.02332794666290283203125f) * nor.x);
-}
-
-float4x4 getCascadeMat(float d, inout int casi, inout int casIndex)
-{
-    float4 comp = float4(float(d > casData[16].x), float(d > casData[16].y), float(d > casData[16].z), float(d > casData[16].w));
-    casi = int(min(dot(1.0f.xxxx, comp), 4.0f));
-    casIndex = casi * 4;
-    return float4x4(float4(casData[casIndex]), float4(casData[casIndex + 1]), float4(casData[casIndex + 2]), float4(casData[casIndex + 3]));
-}
-
-float PCF(Texture2D<float4> shadowMap_1, SamplerComparisonState _shadowMap_1_sampler, float2 uv, float compare, float2 smSize)
-{
-    float3 _157 = float3(uv + ((-1.0f).xx / smSize), compare);
-    float result = shadowMap_1.SampleCmp(_shadowMap_1_sampler, _157.xy, _157.z);
-    float3 _166 = float3(uv + (float2(-1.0f, 0.0f) / smSize), compare);
-    result += shadowMap_1.SampleCmp(_shadowMap_1_sampler, _166.xy, _166.z);
-    float3 _177 = float3(uv + (float2(-1.0f, 1.0f) / smSize), compare);
-    result += shadowMap_1.SampleCmp(_shadowMap_1_sampler, _177.xy, _177.z);
-    float3 _188 = float3(uv + (float2(0.0f, -1.0f) / smSize), compare);
-    result += shadowMap_1.SampleCmp(_shadowMap_1_sampler, _188.xy, _188.z);
-    float3 _196 = float3(uv, compare);
-    result += shadowMap_1.SampleCmp(_shadowMap_1_sampler, _196.xy, _196.z);
-    float3 _207 = float3(uv + (float2(0.0f, 1.0f) / smSize), compare);
-    result += shadowMap_1.SampleCmp(_shadowMap_1_sampler, _207.xy, _207.z);
-    float3 _218 = float3(uv + (float2(1.0f, -1.0f) / smSize), compare);
-    result += shadowMap_1.SampleCmp(_shadowMap_1_sampler, _218.xy, _218.z);
-    float3 _229 = float3(uv + (float2(1.0f, 0.0f) / smSize), compare);
-    result += shadowMap_1.SampleCmp(_shadowMap_1_sampler, _229.xy, _229.z);
-    float3 _240 = float3(uv + (1.0f.xx / smSize), compare);
-    result += shadowMap_1.SampleCmp(_shadowMap_1_sampler, _240.xy, _240.z);
-    return result / 9.0f;
-}
-
-float shadowTestCascade(Texture2D<float4> shadowMap_1, SamplerComparisonState _shadowMap_1_sampler, float3 eye_1, float3 p, float shadowsBias_1)
-{
-    float d = distance(eye_1, p);
-    int param;
-    int param_1;
-    float4x4 _340 = getCascadeMat(d, param, param_1);
-    int casi = param;
-    int casIndex = param_1;
-    float4x4 LWVP = _340;
-    float4 lPos = mul(float4(p, 1.0f), LWVP);
-    float3 _355 = lPos.xyz / lPos.w.xxx;
-    lPos = float4(_355.x, _355.y, _355.z, lPos.w);
-    float visibility = 1.0f;
-    if (lPos.w > 0.0f)
-    {
-        visibility = PCF(shadowMap_1, _shadowMap_1_sampler, lPos.xy, lPos.z - shadowsBias_1, float2(4096.0f, 1024.0f));
-    }
-    float nextSplit = casData[16][casi];
-    float _381;
-    if (casi == 0)
-    {
-        _381 = nextSplit;
-    }
-    else
-    {
-        _381 = nextSplit - (casData[16][casi - 1]);
-    }
-    float splitSize = _381;
-    float splitDist = (nextSplit - d) / splitSize;
-    if ((splitDist <= 0.1500000059604644775390625f) && (casi != 3))
-    {
-        int casIndex2 = casIndex + 4;
-        float4x4 LWVP2 = float4x4(float4(casData[casIndex2]), float4(casData[casIndex2 + 1]), float4(casData[casIndex2 + 2]), float4(casData[casIndex2 + 3]));
-        float4 lPos2 = mul(float4(p, 1.0f), LWVP2);
-        float3 _459 = lPos2.xyz / lPos2.w.xxx;
-        lPos2 = float4(_459.x, _459.y, _459.z, lPos2.w);
-        float visibility2 = 1.0f;
-        if (lPos2.w > 0.0f)
-        {
-            visibility2 = PCF(shadowMap_1, _shadowMap_1_sampler, lPos2.xy, lPos2.z - shadowsBias_1, float2(4096.0f, 1024.0f));
-        }
-        float lerpAmt = smoothstep(0.0f, 0.1500000059604644775390625f, splitDist);
-        return lerp(visibility2, visibility, lerpAmt);
-    }
-    return visibility;
 }
 
 float3 lambertDiffuseBRDF(float3 albedo, float nl)
@@ -188,10 +103,6 @@ void frag_main()
     float sdotNL = dot(n, sunDir);
     float sdotNH = dot(n, sh);
     float sdotVH = dot(vVec, sh);
-    if (receiveShadow)
-    {
-        svisibility = shadowTestCascade(shadowMap, _shadowMap_sampler, eye, wposition + ((n * shadowsBias) * 10.0f), shadowsBias);
-    }
     direct += (((lambertDiffuseBRDF(albedo, sdotNL) + (specularBRDF(f0, roughness, sdotNL, sdotNH, dotNV, sdotVH) * specular)) * sunCol) * svisibility);
     if (emission > 0.0f)
     {
@@ -209,7 +120,6 @@ SPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)
     gl_FragCoord = stage_input.gl_FragCoord;
     wnormal = stage_input.wnormal;
     eyeDir = stage_input.eyeDir;
-    wposition = stage_input.wposition;
     frag_main();
     SPIRV_Cross_Output stage_output;
     stage_output.fragColor = fragColor;

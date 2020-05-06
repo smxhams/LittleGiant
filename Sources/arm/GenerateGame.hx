@@ -36,7 +36,7 @@ class GenerateGame extends iron.Trait {
 							}
 							else {
 								distance = Std.int((Math.abs(q)+Math.abs(r)+Math.abs(s)) / 2);
-								temp = [{i:index, x:q, y:r, z:s, t:Std.random(20), v:Std.int((distance*750*(Math.random()+0.5))), p:0}];
+								temp = [{i:index, x:q, y:r, z:s, t:Std.random(20), v:Std.int(1750*(Math.random()+0.5)), p:0}];
 								data.push(temp);
 							}
 							index += 1;
@@ -49,6 +49,7 @@ class GenerateGame extends iron.Trait {
 			tickInterval = (totalTime/totalTicks) * speed;
 			trace("Generating Game. Tick interval: " + tickInterval);
 			trace('TotalTicks :' + totalTicks);
+			trace('Total hexagons: ' + index);
 			
 		});
 
@@ -83,8 +84,27 @@ class GenerateGame extends iron.Trait {
 				}
 
 				// Second half place type objects
-
-
+				var tickOffset = currentTick - InitGame.inst.totalTiles - 1;
+				if (currentTick > InitGame.inst.totalTiles) {
+					var value = data[tickOffset][0].v;
+					var prev = '';
+					for (i in InitGame.inst.hexObjTypes.keys()) {
+						if (value<InitGame.inst.hexObjTypes[i]) {
+							//obj.getChild('cel'+prev).visible = true;
+							break;
+						}
+						else prev = i;
+					}
+					iron.Scene.active.spawnObject('cont'+prev, null, function(o:Object) {
+						o.transform.loc.x = 1*(Math.sqrt(3)*data[tickOffset][0].x + Math.sqrt(3)/2*data[tickOffset][0].y);
+						o.transform.loc.y = 1*(3/2*data[tickOffset][0].y);
+						o.transform.loc.z = 0.0;
+						o.transform.buildMatrix();
+						InitGame.inst.hexTileCelestials.add(o);
+						o.properties['id'] = data[tickOffset][0].i;
+					});
+					trace(tickOffset);
+				}
 				currentTick += 1;
 			}
 			currentTime += Time.delta;
