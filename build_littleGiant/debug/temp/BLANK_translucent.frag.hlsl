@@ -1,5 +1,8 @@
 uniform float4 casData[20];
 uniform float4 shirr[7];
+Texture2D<float4> ImageTexture;
+SamplerState _ImageTexture_sampler;
+uniform float3 param_RGB;
 uniform float3 backgroundCol;
 uniform float envmapStrength;
 uniform float3 sunDir;
@@ -12,15 +15,15 @@ uniform float3 sunCol;
 
 static float4 gl_FragCoord;
 static float3 wnormal;
+static float2 texCoord;
 static float3 eyeDir;
-static float3 mposition;
 static float3 wposition;
 static float4 fragColor[2];
 
 struct SPIRV_Cross_Input
 {
     float3 eyeDir : TEXCOORD0;
-    float3 mposition : TEXCOORD1;
+    float2 texCoord : TEXCOORD1;
     float3 wnormal : TEXCOORD2;
     float3 wposition : TEXCOORD3;
     float4 gl_FragCoord : SV_Position;
@@ -164,16 +167,23 @@ float3 specularBRDF(float3 f0, float roughness, float nl, float nh, float nv, fl
 void frag_main()
 {
     float3 n = normalize(wnormal);
+    float4 ImageTexture_texread_store = ImageTexture.Sample(_ImageTexture_sampler, texCoord);
+    float3 _655 = pow(ImageTexture_texread_store.xyz, 2.2000000476837158203125f.xxx);
+    ImageTexture_texread_store = float4(_655.x, _655.y, _655.z, ImageTexture_texread_store.w);
     float3 vVec = normalize(eyeDir);
     float dotNV = max(dot(n, vVec), 0.0f);
-    float3 Geometry_Parametric_res = mposition;
-    float3 basecol = float3(0.400000035762786865234375f, 0.059530220925807952880859375f, 0.400000035762786865234375f);
+    float Mix_fac = 1.0f;
+    float3 RGB_Color_res = param_RGB;
+    float3 ImageTexture_Color_res = ImageTexture_texread_store.xyz;
+    float3 Mix_Color_res = lerp(RGB_Color_res, ImageTexture_Color_res, Mix_fac.xxx);
+    float ImageTexture_Alpha_res = ImageTexture_texread_store.w;
+    float3 basecol = Mix_Color_res;
     float roughness = 0.100000001490116119384765625f;
     float metallic = 0.0f;
     float occlusion = 1.0f;
     float specular = 1.0f;
-    float emission = 12.34999942779541015625f;
-    float opacity = (((((((Geometry_Parametric_res.x * 0.300000011920928955078125f) + (Geometry_Parametric_res.y * 0.589999973773956298828125f)) + (Geometry_Parametric_res.z * 0.10999999940395355224609375f)) / 3.0f) * 2.5f) * 0.5f) + 0.5f) - 0.00019999999494757503271102905273438f;
+    float emission = 1.0f;
+    float opacity = ImageTexture_Alpha_res - 0.00019999999494757503271102905273438f;
     if (opacity == 1.0f)
     {
         discard;
@@ -211,8 +221,8 @@ SPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)
 {
     gl_FragCoord = stage_input.gl_FragCoord;
     wnormal = stage_input.wnormal;
+    texCoord = stage_input.texCoord;
     eyeDir = stage_input.eyeDir;
-    mposition = stage_input.mposition;
     wposition = stage_input.wposition;
     frag_main();
     SPIRV_Cross_Output stage_output;
