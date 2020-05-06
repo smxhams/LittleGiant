@@ -20,7 +20,7 @@ class MainMenu extends iron.Trait {
 			//Load Music1 channel (And play for main menu)
 			if (InitGame.inst.music1 == null) {
 				iron.data.Data.getSound('Music/BrightGalaxy.wav', function(sound:kha.Sound) {
-					sound.sampleRate = 40200; // File is 44100, game is 48000, drop to 40200 to account for speed up.
+					//sound.sampleRate = 40200; // File is 44100, game is 48000, drop to 40200 to account for speed up.
 					InitGame.inst.music1 = iron.system.Audio.play(sound, true, true);
 					InitGame.inst.music1.volume = 1.0; //Add settings multiplier here is relevant
 				});
@@ -56,6 +56,7 @@ class MainMenu extends iron.Trait {
 		notifyOnRemove(function() {
 			canvas.getElement('contMainMenu').visible = false;
 			InitGame.inst.difficulty = canvas.getElement('diffRadio').text;
+			InitGame.inst.mapRadius = Std.parseInt(canvas.getElement('diffText2').text.substr(11));
 			iron.Scene.active.spawnObject('contGenerateGame', null, function(o:Object) {});
 		});
 	}
@@ -70,14 +71,17 @@ class MainMenu extends iron.Trait {
 		if (canvas.getElement('diffRadio').text == "STANDARD") {
 			canvas.getElement('diffRadio').text = "HARD";
 			canvas.getElement('diffText1').text = "Mass multiplier x0.75";
+			canvas.getElement('diffText2').text = "Map Radius: 6";
 		}
 		else if (canvas.getElement('diffRadio').text == "EASY") {
 			canvas.getElement('diffRadio').text = "STANDARD";
 			canvas.getElement('diffText1').text = "Mass multiplier x1.0";
+			canvas.getElement('diffText2').text = "Map Radius: 8";
 		}
 		else {
 			canvas.getElement('diffRadio').text = "EASY";
 			canvas.getElement('diffText1').text = "Mass multiplier x1.5";
+			canvas.getElement('diffText2').text = "Map Radius: 10";
 		}
 	}
 }

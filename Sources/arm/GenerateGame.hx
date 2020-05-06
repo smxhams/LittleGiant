@@ -20,7 +20,7 @@ class GenerateGame extends iron.Trait {
 
 		notifyOnInit(function() {
 			//Generates grid
-			var radius = 8; //Final radius is this minus 1
+			var radius = InitGame.inst.mapRadius; //Final radius is this minus 1
 			var data = InitGame.inst.hexTilesData;
 			var index = 0;
 			var distance = 0;
@@ -77,6 +77,8 @@ class GenerateGame extends iron.Trait {
 						o.transform.loc.y = 1*(3/2*data[currentTick][0].y);
 						o.transform.loc.z = 0.0;
 						o.transform.buildMatrix();
+						InitGame.inst.hexTilesObjects.add(o);
+						o.properties['id'] = data[currentTick][0].i;
 					});
 				}
 

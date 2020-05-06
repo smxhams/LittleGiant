@@ -424,7 +424,7 @@ var arm_GenerateGame = function() {
 	var _gthis = this;
 	iron_Trait.call(this);
 	this.notifyOnInit(function() {
-		var radius = 8;
+		var radius = arm_InitGame.inst.mapRadius;
 		var data = arm_InitGame.inst.hexTilesData;
 		var index = 0;
 		var distance = 0;
@@ -474,6 +474,15 @@ var arm_GenerateGame = function() {
 					o.transform.loc.y = 1.5 * data1[_gthis.currentTick][0].y;
 					o.transform.loc.z = 0.0;
 					o.transform.buildMatrix();
+					arm_InitGame.inst.hexTilesObjects.add(o);
+					var v = data1[_gthis.currentTick][0].i;
+					var _this = o.properties;
+					var value = v;
+					if(__map_reserved["id"] != null) {
+						_this.setReserved("id",value);
+					} else {
+						_this.h["id"] = value;
+					}
 				});
 			}
 			_gthis.currentTick += 1;
@@ -531,6 +540,7 @@ arm_InitGame.prototype = $extend(iron_Trait.prototype,{
 	,homeIndex: null
 	,totalTiles: null
 	,difficulty: null
+	,mapRadius: null
 	,camDistance: null
 	,music1: null
 	,music2: null
@@ -544,15 +554,21 @@ var arm_MainGame = function() {
 	var _gthis = this;
 	iron_Trait.call(this);
 	this.notifyOnInit(function() {
-		haxe_Log.trace("Welcome to the main game",{ fileName : "arm/MainGame.hx", lineNumber : 18, className : "arm.MainGame", methodName : "new"});
+		haxe_Log.trace("Welcome to the main game",{ fileName : "arm/MainGame.hx", lineNumber : 21, className : "arm.MainGame", methodName : "new"});
 		_gthis.keyboard = iron_system_Input.getKeyboard();
 		_gthis.mouse = iron_system_Input.getMouse();
 		var camera = iron_Scene.active.getChild("Camera");
 		_gthis.camX = camera.transform.loc.x + 0.245;
 		_gthis.camY = camera.transform.loc.y + 0.245;
+		iron_Scene.active.spawnObject("hoverHex",null,function(o) {
+			o.visible = false;
+			o.transform.loc.z = 0.0;
+			o.transform.buildMatrix();
+		});
 	});
 	this.notifyOnUpdate(function() {
 		_gthis.camControl();
+		_gthis.mouseOver();
 	});
 };
 $hxClasses["arm.MainGame"] = arm_MainGame;
@@ -561,6 +577,7 @@ arm_MainGame.__super__ = iron_Trait;
 arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 	keyboard: null
 	,mouse: null
+	,lastHover: null
 	,camSpeed: null
 	,camX: null
 	,camY: null
@@ -602,6 +619,35 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 			camera.transform.loc.y += -(camera.transform.loc.y - this.camY) / 10;
 		}
 	}
+	,mouseOver: function() {
+		if(!this.mouse.moved) {
+			return;
+		}
+		var rb = armory_trait_physics_bullet_PhysicsWorld.active.pickClosest(this.mouse.x,this.mouse.y);
+		if(rb != null) {
+			var hoverHex = iron_Scene.active.getChild("hoverHex");
+			var hex = rb.object.parent;
+			var _this = hex.properties;
+			if(this.lastHover != (__map_reserved["id"] != null ? _this.getReserved("id") : _this.h["id"])) {
+				var _this1 = hex.properties;
+				this.lastHover = __map_reserved["id"] != null ? _this1.getReserved("id") : _this1.h["id"];
+				var _this2 = hex.properties;
+				haxe_Log.trace(__map_reserved["id"] != null ? _this2.getReserved("id") : _this2.h["id"],{ fileName : "arm/MainGame.hx", lineNumber : 101, className : "arm.MainGame", methodName : "mouseOver"});
+				hoverHex.transform.loc.x = hex.transform.loc.x;
+				hoverHex.transform.loc.y = hex.transform.loc.y;
+				hoverHex.transform.buildMatrix();
+				if(hoverHex.getChild("hoverHexBlue") != null) {
+					hoverHex.getChild("hoverHexBlue").visible = true;
+				}
+			}
+		} else if(this.lastHover != null) {
+			this.lastHover = null;
+			var hoverHex1 = iron_Scene.active.getChild("hoverHex");
+			if(hoverHex1.getChild("hoverHexBlue") != null) {
+				hoverHex1.getChild("hoverHexBlue").visible = false;
+			}
+		}
+	}
 	,roundValue: function(n,prec) {
 		n = Math.round(n * Math.pow(10,prec));
 		return n;
@@ -618,7 +664,6 @@ var arm_MainMenu = function() {
 		_gthis.canvas.getElement("contMainMenu").visible = true;
 		if(arm_InitGame.inst.music1 == null) {
 			iron_data_Data.getSound("Music/BrightGalaxy.wav",function(sound) {
-				sound.sampleRate = 40200;
 				arm_InitGame.inst.music1 = iron_system_Audio.play(sound,true,true);
 				arm_InitGame.inst.music1.set_volume(1.0);
 			});
@@ -655,6 +700,8 @@ var arm_MainMenu = function() {
 	this.notifyOnRemove(function() {
 		_gthis.canvas.getElement("contMainMenu").visible = false;
 		arm_InitGame.inst.difficulty = _gthis.canvas.getElement("diffRadio").text;
+		var tmp7 = HxOverrides.substr(_gthis.canvas.getElement("diffText2").text,11,null);
+		arm_InitGame.inst.mapRadius = Std.parseInt(tmp7);
 		iron_Scene.active.spawnObject("contGenerateGame",null,function(o) {
 		});
 	});
@@ -667,7 +714,7 @@ arm_MainMenu.prototype = $extend(iron_Trait.prototype,{
 	,winW: null
 	,winH: null
 	,startGame: function() {
-		haxe_Log.trace("Start the game!",{ fileName : "arm/MainMenu.hx", lineNumber : 64, className : "arm.MainMenu", methodName : "startGame"});
+		haxe_Log.trace("Start the game!",{ fileName : "arm/MainMenu.hx", lineNumber : 65, className : "arm.MainMenu", methodName : "startGame"});
 		this.canvas.getElement("contMainMenu").visible = false;
 		this.object.remove();
 	}
@@ -675,12 +722,15 @@ arm_MainMenu.prototype = $extend(iron_Trait.prototype,{
 		if(this.canvas.getElement("diffRadio").text == "STANDARD") {
 			this.canvas.getElement("diffRadio").text = "HARD";
 			this.canvas.getElement("diffText1").text = "Mass multiplier x0.75";
+			this.canvas.getElement("diffText2").text = "Map Radius: 6";
 		} else if(this.canvas.getElement("diffRadio").text == "EASY") {
 			this.canvas.getElement("diffRadio").text = "STANDARD";
 			this.canvas.getElement("diffText1").text = "Mass multiplier x1.0";
+			this.canvas.getElement("diffText2").text = "Map Radius: 8";
 		} else {
 			this.canvas.getElement("diffRadio").text = "EASY";
 			this.canvas.getElement("diffText1").text = "Mass multiplier x1.5";
+			this.canvas.getElement("diffText2").text = "Map Radius: 10";
 		}
 	}
 	,__class__: arm_MainMenu
@@ -1542,7 +1592,29 @@ armory_system_Starter.main = function(scene,mode,resize,min,max,w,h,msaa,vsync,g
 			});
 		});
 	};
+	var loadLibAmmo = function(name) {
+		kha_Assets.loadBlobFromPath(name,function(b) {
+			var print = function(s) {
+				haxe_Log.trace(s,{ fileName : "Sources/armory/system/Starter.hx", lineNumber : 79, className : "armory.system.Starter", methodName : "main"});
+			};
+			var loaded = function() {
+				armory_system_Starter.tasks--;
+				start();
+			};
+			(1, eval)(b.toString());
+			var instantiateWasm = function(imports,successCallback) {
+				var wasmbin = Krom.loadBlob("ammo.wasm.wasm");
+				var module = new WebAssembly.Module(wasmbin);
+				var inst = new WebAssembly.Instance(module,imports);
+				successCallback(inst);
+				return inst.exports;
+			};
+			Ammo({print:print, instantiateWasm:instantiateWasm}).then(loaded);
+		},null,{ fileName : "Sources/armory/system/Starter.hx", lineNumber : 78, className : "armory.system.Starter", methodName : "main"});
+	};
 	armory_system_Starter.tasks = 1;
+	armory_system_Starter.tasks++;
+	loadLibAmmo("ammo.wasm.js");
 	armory_system_Starter.tasks++;
 	armory_data_Config.load(function() {
 		armory_system_Starter.tasks--;
@@ -5059,6 +5131,10 @@ armory_trait_internal_DebugConsole.prototype = $extend(iron_Trait.prototype,{
 							_this7.z = c11 * c2 * s3 - s1 * s2 * c3;
 							_this7.w = c11 * c2 * c3 - s1 * s2 * s3;
 							this.selectedObject.transform.buildMatrix();
+							var rb = this.selectedObject.getTrait(armory_trait_physics_bullet_RigidBody);
+							if(rb != null) {
+								rb.syncTransform();
+							}
 						}
 						this.ui.row(armory_trait_internal_DebugConsole.row4);
 						this.ui.text("Scale");
@@ -5385,6 +5461,7 @@ armory_trait_internal_DebugConsole.prototype = $extend(iron_Trait.prototype,{
 		armory_trait_WalkNavigation.enabled = !(this.ui.isScrolling || this.ui.dragHandle != null);
 		this.updateTime += iron_App.updateTime;
 		this.animTime += iron_object_Animation.animationTime;
+		this.physTime += armory_trait_physics_bullet_PhysicsWorld.physTime;
 	}
 	,__class__: armory_trait_internal_DebugConsole
 });
@@ -6187,6 +6264,2525 @@ armory_trait_internal_DebugDraw.prototype = {
 	}
 	,__class__: armory_trait_internal_DebugDraw
 };
+var armory_trait_physics_bullet_Hit = function(rb,pos,normal) {
+	this.rb = rb;
+	this.pos = pos;
+	this.normal = normal;
+};
+$hxClasses["armory.trait.physics.bullet.Hit"] = armory_trait_physics_bullet_Hit;
+armory_trait_physics_bullet_Hit.__name__ = "armory.trait.physics.bullet.Hit";
+armory_trait_physics_bullet_Hit.prototype = {
+	rb: null
+	,pos: null
+	,normal: null
+	,__class__: armory_trait_physics_bullet_Hit
+};
+var armory_trait_physics_bullet_ContactPair = function(a,b) {
+	this.a = a;
+	this.b = b;
+};
+$hxClasses["armory.trait.physics.bullet.ContactPair"] = armory_trait_physics_bullet_ContactPair;
+armory_trait_physics_bullet_ContactPair.__name__ = "armory.trait.physics.bullet.ContactPair";
+armory_trait_physics_bullet_ContactPair.prototype = {
+	a: null
+	,b: null
+	,posA: null
+	,posB: null
+	,normOnB: null
+	,impulse: null
+	,distance: null
+	,__class__: armory_trait_physics_bullet_ContactPair
+};
+var armory_trait_physics_bullet_PhysicsWorld = function(timeScale,timeStep,solverIterations) {
+	if(solverIterations == null) {
+		solverIterations = 10;
+	}
+	if(timeStep == null) {
+		timeStep = 0.016666666666666666;
+	}
+	if(timeScale == null) {
+		timeScale = 1.0;
+	}
+	this.pairCache = false;
+	this.hitNormalWorld = new iron_math_Vec4();
+	this.hitPointWorld = new iron_math_Vec4();
+	this.solverIterations = 10;
+	this.maxSteps = 1;
+	this.timeStep = 0.016666666666666666;
+	this.timeScale = 1.0;
+	this.preUpdates = null;
+	this.gimpactRegistered = false;
+	iron_Trait.call(this);
+	if(armory_trait_physics_bullet_PhysicsWorld.nullvec) {
+		armory_trait_physics_bullet_PhysicsWorld.nullvec = false;
+		armory_trait_physics_bullet_PhysicsWorld.vec1 = new Ammo.btVector3(0,0,0);
+		armory_trait_physics_bullet_PhysicsWorld.vec2 = new Ammo.btVector3(0,0,0);
+	}
+	if(armory_trait_physics_bullet_PhysicsWorld.active != null && !armory_trait_physics_bullet_PhysicsWorld.sceneRemoved) {
+		return;
+	}
+	armory_trait_physics_bullet_PhysicsWorld.sceneRemoved = false;
+	this.timeScale = timeScale;
+	this.timeStep = timeStep;
+	this.maxSteps = timeStep < 0.016666666666666666 ? 10 : 1;
+	this.solverIterations = solverIterations;
+	if(armory_trait_physics_bullet_PhysicsWorld.active == null) {
+		this.createPhysics();
+	} else {
+		this.world = armory_trait_physics_bullet_PhysicsWorld.active.world;
+		this.dispatcher = armory_trait_physics_bullet_PhysicsWorld.active.dispatcher;
+		this.gimpactRegistered = armory_trait_physics_bullet_PhysicsWorld.active.gimpactRegistered;
+	}
+	this.contacts = [];
+	this.rbMap = new haxe_ds_IntMap();
+	armory_trait_physics_bullet_PhysicsWorld.active = this;
+	this._lateUpdate = [$bind(this,this.lateUpdate)];
+	iron_App.traitLateUpdates.splice(0,0,$bind(this,this.lateUpdate));
+	iron_Scene.active.notifyOnRemove(function() {
+		armory_trait_physics_bullet_PhysicsWorld.sceneRemoved = true;
+	});
+};
+$hxClasses["armory.trait.physics.bullet.PhysicsWorld"] = armory_trait_physics_bullet_PhysicsWorld;
+armory_trait_physics_bullet_PhysicsWorld.__name__ = "armory.trait.physics.bullet.PhysicsWorld";
+armory_trait_physics_bullet_PhysicsWorld.__super__ = iron_Trait;
+armory_trait_physics_bullet_PhysicsWorld.prototype = $extend(iron_Trait.prototype,{
+	world: null
+	,dispatcher: null
+	,gimpactRegistered: null
+	,contacts: null
+	,preUpdates: null
+	,rbMap: null
+	,timeScale: null
+	,timeStep: null
+	,maxSteps: null
+	,solverIterations: null
+	,hitPointWorld: null
+	,hitNormalWorld: null
+	,pairCache: null
+	,reset: function() {
+		var rb = armory_trait_physics_bullet_PhysicsWorld.active.rbMap.iterator();
+		while(rb.hasNext()) {
+			var rb1 = rb.next();
+			this.removeRigidBody(rb1);
+		}
+	}
+	,createPhysics: function() {
+		var broadphase = new Ammo.btDbvtBroadphase();
+		var collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
+		this.dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration);
+		var solver = new Ammo.btSequentialImpulseConstraintSolver();
+		var g = iron_Scene.active.raw.gravity;
+		var gravity = g == null ? new iron_math_Vec4(0,0,-9.81) : new iron_math_Vec4(g[0],g[1],g[2]);
+		this.world = new Ammo.btDiscreteDynamicsWorld(this.dispatcher,broadphase,solver,collisionConfiguration);
+		this.setGravity(gravity);
+	}
+	,setGravity: function(v) {
+		armory_trait_physics_bullet_PhysicsWorld.vec1.setValue(v.x,v.y,v.z);
+		this.world.setGravity(armory_trait_physics_bullet_PhysicsWorld.vec1);
+	}
+	,addRigidBody: function(body) {
+		this.world.addRigidBody(body.body,body.group,body.mask);
+		this.rbMap.h[body.id] = body;
+	}
+	,removeRigidBody: function(body) {
+		if(body.destroyed) {
+			return;
+		}
+		body.destroyed = true;
+		if(this.world != null) {
+			this.world.removeRigidBody(body.body);
+		}
+		this.rbMap.remove(body.id);
+		body.delete();
+	}
+	,getContacts: function(body) {
+		if(this.contacts.length == 0) {
+			return null;
+		}
+		var res = [];
+		var _g = 0;
+		var _g1 = this.contacts.length;
+		while(_g < _g1) {
+			var i = _g++;
+			var c = this.contacts[i];
+			var rb = null;
+			if(c.a == body.body.userIndex) {
+				rb = this.rbMap.h[c.b];
+			} else if(c.b == body.body.userIndex) {
+				rb = this.rbMap.h[c.a];
+			}
+			if(rb != null && res.indexOf(rb) == -1) {
+				res.push(rb);
+			}
+		}
+		return res;
+	}
+	,getContactPairs: function(body) {
+		if(this.contacts.length == 0) {
+			return null;
+		}
+		var res = [];
+		var _g = 0;
+		var _g1 = this.contacts.length;
+		while(_g < _g1) {
+			var i = _g++;
+			var c = this.contacts[i];
+			if(c.a == body.body.userIndex) {
+				res.push(c);
+			} else if(c.b == body.body.userIndex) {
+				res.push(c);
+			}
+		}
+		return res;
+	}
+	,findBody: function(id) {
+		var rb = this.rbMap.h[id];
+		return rb;
+	}
+	,lateUpdate: function() {
+		var t = 0.016666666666666666 * iron_system_Time.scale * this.timeScale;
+		if(t == 0.0) {
+			return;
+		}
+		var startTime = kha_Scheduler.realTime();
+		if(this.preUpdates != null) {
+			var _g = 0;
+			var _g1 = this.preUpdates;
+			while(_g < _g1.length) {
+				var f = _g1[_g];
+				++_g;
+				f();
+			}
+		}
+		this.world.stepSimulation(this.timeStep,this.maxSteps,t);
+		this.updateContacts();
+		var rb = this.rbMap.iterator();
+		while(rb.hasNext()) {
+			var rb1 = rb.next();
+			rb1.physicsUpdate();
+		}
+		armory_trait_physics_bullet_PhysicsWorld.physTime = kha_Scheduler.realTime() - startTime;
+	}
+	,updateContacts: function() {
+		this.contacts = [];
+		var disp = this.dispatcher;
+		var numManifolds = disp.getNumManifolds();
+		var _g = 0;
+		var _g1 = numManifolds;
+		while(_g < _g1) {
+			var i = _g++;
+			var contactManifold = disp.getManifoldByIndexInternal(i);
+			var body0 = Ammo.btRigidBody.prototype;
+			var body01 = contactManifold.getBody0();
+			var body02 = body0.upcast(body01);
+			var body1 = Ammo.btRigidBody.prototype;
+			var body11 = contactManifold.getBody1();
+			var body12 = body1.upcast(body11);
+			var numContacts = contactManifold.getNumContacts();
+			var pt = null;
+			var posA = null;
+			var posB = null;
+			var nor = null;
+			var cp = null;
+			var _g2 = 0;
+			var _g11 = numContacts;
+			while(_g2 < _g11) {
+				var j = _g2++;
+				pt = contactManifold.getContactPoint(j);
+				posA = pt.get_m_positionWorldOnA();
+				posB = pt.get_m_positionWorldOnB();
+				nor = pt.get_m_normalWorldOnB();
+				cp = new armory_trait_physics_bullet_ContactPair(body02.userIndex,body12.userIndex);
+				cp.posA = new iron_math_Vec4(posA.x(),posA.y(),posA.z());
+				cp.posB = new iron_math_Vec4(posB.x(),posB.y(),posB.z());
+				cp.normOnB = new iron_math_Vec4(nor.x(),nor.y(),nor.z());
+				cp.impulse = pt.getAppliedImpulse();
+				cp.distance = pt.getDistance();
+				this.contacts.push(cp);
+			}
+		}
+	}
+	,pickClosest: function(inputX,inputY) {
+		var camera = iron_Scene.active.camera;
+		var start = new iron_math_Vec4();
+		var end = new iron_math_Vec4();
+		iron_math_RayCaster.getDirection(start,end,inputX,inputY,camera);
+		var _this = camera.transform.world;
+		var hit = this.rayCast(new iron_math_Vec4(_this.self._30,_this.self._31,_this.self._32,_this.self._33),end);
+		var rb = hit != null ? hit.rb : null;
+		return rb;
+	}
+	,rayCast: function(from,to,group,mask) {
+		if(mask == null) {
+			mask = -1;
+		}
+		if(group == null) {
+			group = 1;
+		}
+		var rayFrom = armory_trait_physics_bullet_PhysicsWorld.vec1;
+		var rayTo = armory_trait_physics_bullet_PhysicsWorld.vec2;
+		rayFrom.setValue(from.x,from.y,from.z);
+		rayTo.setValue(to.x,to.y,to.z);
+		var rayCallback = new Ammo.ClosestRayResultCallback(rayFrom,rayTo);
+		rayCallback.set_m_collisionFilterGroup(group);
+		rayCallback.set_m_collisionFilterMask(mask);
+		var worldDyn = this.world;
+		var worldCol = worldDyn;
+		worldCol.rayTest(rayFrom,rayTo,rayCallback);
+		var rb = null;
+		var hitInfo = null;
+		var rc = rayCallback;
+		if(rc.hasHit()) {
+			var co = rayCallback.get_m_collisionObject();
+			var body = Ammo.btRigidBody.prototype.upcast(co);
+			var hit = rayCallback.get_m_hitPointWorld();
+			var _this = this.hitPointWorld;
+			var x = hit.x();
+			var y = hit.y();
+			var z = hit.z();
+			_this.x = x;
+			_this.y = y;
+			_this.z = z;
+			_this.w = 1.0;
+			var norm = rayCallback.get_m_hitNormalWorld();
+			var _this1 = this.hitNormalWorld;
+			var x1 = norm.x();
+			var y1 = norm.y();
+			var z1 = norm.z();
+			_this1.x = x1;
+			_this1.y = y1;
+			_this1.z = z1;
+			_this1.w = 1.0;
+			rb = this.rbMap.h[body.userIndex];
+			hitInfo = new armory_trait_physics_bullet_Hit(rb,this.hitPointWorld,this.hitNormalWorld);
+		}
+		Ammo.destroy(rayCallback);
+		return hitInfo;
+	}
+	,notifyOnPreUpdate: function(f) {
+		if(this.preUpdates == null) {
+			this.preUpdates = [];
+		}
+		this.preUpdates.push(f);
+	}
+	,removePreUpdate: function(f) {
+		HxOverrides.remove(this.preUpdates,f);
+	}
+	,__class__: armory_trait_physics_bullet_PhysicsWorld
+});
+var kha_math_FastMatrix4 = function(_00,_10,_20,_30,_01,_11,_21,_31,_02,_12,_22,_32,_03,_13,_23,_33) {
+	this._00 = _00;
+	this._10 = _10;
+	this._20 = _20;
+	this._30 = _30;
+	this._01 = _01;
+	this._11 = _11;
+	this._21 = _21;
+	this._31 = _31;
+	this._02 = _02;
+	this._12 = _12;
+	this._22 = _22;
+	this._32 = _32;
+	this._03 = _03;
+	this._13 = _13;
+	this._23 = _23;
+	this._33 = _33;
+};
+$hxClasses["kha.math.FastMatrix4"] = kha_math_FastMatrix4;
+kha_math_FastMatrix4.__name__ = "kha.math.FastMatrix4";
+kha_math_FastMatrix4.fromMatrix4 = function(m) {
+	return new kha_math_FastMatrix4(m._00,m._10,m._20,m._30,m._01,m._11,m._21,m._31,m._02,m._12,m._22,m._32,m._03,m._13,m._23,m._33);
+};
+kha_math_FastMatrix4.orthogonalProjection = function(left,right,bottom,top,zn,zf) {
+	var tx = -(right + left) / (right - left);
+	var ty = -(top + bottom) / (top - bottom);
+	var tz = -(zf + zn) / (zf - zn);
+	return new kha_math_FastMatrix4(2 / (right - left),0,0,tx,0,2.0 / (top - bottom),0,ty,0,0,-2 / (zf - zn),tz,0,0,0,1);
+};
+kha_math_FastMatrix4.perspectiveProjection = function(fovY,aspect,zn,zf) {
+	var uh = 1.0 / Math.tan(fovY / 2);
+	var uw = uh / aspect;
+	return new kha_math_FastMatrix4(uw,0,0,0,0,uh,0,0,0,0,(zf + zn) / (zn - zf),2 * zf * zn / (zn - zf),0,0,-1,0);
+};
+kha_math_FastMatrix4.lookAt = function(eye,at,up) {
+	var x = at.x - eye.x;
+	var y = at.y - eye.y;
+	var z = at.z - eye.z;
+	if(z == null) {
+		z = 0;
+	}
+	if(y == null) {
+		y = 0;
+	}
+	if(x == null) {
+		x = 0;
+	}
+	var _this_x = x;
+	var _this_y = y;
+	var _this_z = z;
+	var x1 = _this_x;
+	var y1 = _this_y;
+	var z1 = _this_z;
+	if(z1 == null) {
+		z1 = 0;
+	}
+	if(y1 == null) {
+		y1 = 0;
+	}
+	if(x1 == null) {
+		x1 = 0;
+	}
+	var zaxis_x = x1;
+	var zaxis_y = y1;
+	var zaxis_z = z1;
+	var currentLength = Math.sqrt(zaxis_x * zaxis_x + zaxis_y * zaxis_y + zaxis_z * zaxis_z);
+	if(currentLength != 0) {
+		var mul = 1 / currentLength;
+		zaxis_x *= mul;
+		zaxis_y *= mul;
+		zaxis_z *= mul;
+	}
+	var _x = zaxis_y * up.z - zaxis_z * up.y;
+	var _y = zaxis_z * up.x - zaxis_x * up.z;
+	var _z = zaxis_x * up.y - zaxis_y * up.x;
+	var x2 = _x;
+	var y2 = _y;
+	var z2 = _z;
+	if(z2 == null) {
+		z2 = 0;
+	}
+	if(y2 == null) {
+		y2 = 0;
+	}
+	if(x2 == null) {
+		x2 = 0;
+	}
+	var _this_x1 = x2;
+	var _this_y1 = y2;
+	var _this_z1 = z2;
+	var x3 = _this_x1;
+	var y3 = _this_y1;
+	var z3 = _this_z1;
+	if(z3 == null) {
+		z3 = 0;
+	}
+	if(y3 == null) {
+		y3 = 0;
+	}
+	if(x3 == null) {
+		x3 = 0;
+	}
+	var xaxis_x = x3;
+	var xaxis_y = y3;
+	var xaxis_z = z3;
+	var currentLength1 = Math.sqrt(xaxis_x * xaxis_x + xaxis_y * xaxis_y + xaxis_z * xaxis_z);
+	if(currentLength1 != 0) {
+		var mul1 = 1 / currentLength1;
+		xaxis_x *= mul1;
+		xaxis_y *= mul1;
+		xaxis_z *= mul1;
+	}
+	var _x1 = xaxis_y * zaxis_z - xaxis_z * zaxis_y;
+	var _y1 = xaxis_z * zaxis_x - xaxis_x * zaxis_z;
+	var _z1 = xaxis_x * zaxis_y - xaxis_y * zaxis_x;
+	var x4 = _x1;
+	var y4 = _y1;
+	var z4 = _z1;
+	if(z4 == null) {
+		z4 = 0;
+	}
+	if(y4 == null) {
+		y4 = 0;
+	}
+	if(x4 == null) {
+		x4 = 0;
+	}
+	var yaxis_x = x4;
+	var yaxis_y = y4;
+	var yaxis_z = z4;
+	return new kha_math_FastMatrix4(xaxis_x,xaxis_y,xaxis_z,-(xaxis_x * eye.x + xaxis_y * eye.y + xaxis_z * eye.z),yaxis_x,yaxis_y,yaxis_z,-(yaxis_x * eye.x + yaxis_y * eye.y + yaxis_z * eye.z),-zaxis_x,-zaxis_y,-zaxis_z,zaxis_x * eye.x + zaxis_y * eye.y + zaxis_z * eye.z,0,0,0,1);
+};
+kha_math_FastMatrix4.prototype = {
+	_00: null
+	,_10: null
+	,_20: null
+	,_30: null
+	,_01: null
+	,_11: null
+	,_21: null
+	,_31: null
+	,_02: null
+	,_12: null
+	,_22: null
+	,_32: null
+	,_03: null
+	,_13: null
+	,_23: null
+	,_33: null
+	,__class__: kha_math_FastMatrix4
+};
+var iron_math_Mat4 = function(_00,_10,_20,_30,_01,_11,_21,_31,_02,_12,_22,_32,_03,_13,_23,_33) {
+	this.self = new kha_math_FastMatrix4(_00,_10,_20,_30,_01,_11,_21,_31,_02,_12,_22,_32,_03,_13,_23,_33);
+};
+$hxClasses["iron.math.Mat4"] = iron_math_Mat4;
+iron_math_Mat4.__name__ = "iron.math.Mat4";
+iron_math_Mat4.fromFloat32Array = function(a,offset) {
+	if(offset == null) {
+		offset = 0;
+	}
+	return new iron_math_Mat4(a[offset],a[1 + offset],a[2 + offset],a[3 + offset],a[4 + offset],a[5 + offset],a[6 + offset],a[7 + offset],a[8 + offset],a[9 + offset],a[10 + offset],a[11 + offset],a[12 + offset],a[13 + offset],a[14 + offset],a[15 + offset]);
+};
+iron_math_Mat4.identity = function() {
+	return new iron_math_Mat4(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
+};
+iron_math_Mat4.persp = function(fovY,aspect,zn,zf) {
+	var uh = 1.0 / Math.tan(fovY / 2);
+	var uw = uh / aspect;
+	return new iron_math_Mat4(uw,0,0,0,0,uh,0,0,0,0,(zf + zn) / (zn - zf),2 * zf * zn / (zn - zf),0,0,-1,0);
+};
+iron_math_Mat4.ortho = function(left,right,bottom,top,near,far) {
+	var rl = right - left;
+	var tb = top - bottom;
+	var fn = far - near;
+	var tx = -(right + left) / rl;
+	var ty = -(top + bottom) / tb;
+	var tz = -(far + near) / fn;
+	return new iron_math_Mat4(2 / rl,0,0,tx,0,2 / tb,0,ty,0,0,-2 / fn,tz,0,0,0,1);
+};
+iron_math_Mat4.prototype = {
+	self: null
+	,compose: function(loc,quat,sc) {
+		var x = quat.x;
+		var y = quat.y;
+		var z = quat.z;
+		var w = quat.w;
+		var x2 = x + x;
+		var y2 = y + y;
+		var z2 = z + z;
+		var xx = x * x2;
+		var xy = x * y2;
+		var xz = x * z2;
+		var yy = y * y2;
+		var yz = y * z2;
+		var zz = z * z2;
+		var wx = w * x2;
+		var wy = w * y2;
+		var wz = w * z2;
+		this.self._00 = 1.0 - (yy + zz);
+		this.self._10 = xy - wz;
+		this.self._20 = xz + wy;
+		this.self._01 = xy + wz;
+		this.self._11 = 1.0 - (xx + zz);
+		this.self._21 = yz - wx;
+		this.self._02 = xz - wy;
+		this.self._12 = yz + wx;
+		this.self._22 = 1.0 - (xx + yy);
+		this.self._03 = 0.0;
+		this.self._13 = 0.0;
+		this.self._23 = 0.0;
+		this.self._30 = 0.0;
+		this.self._31 = 0.0;
+		this.self._32 = 0.0;
+		this.self._33 = 1.0;
+		var x1 = sc.x;
+		var y1 = sc.y;
+		var z1 = sc.z;
+		this.self._00 *= x1;
+		this.self._01 *= x1;
+		this.self._02 *= x1;
+		this.self._03 *= x1;
+		this.self._10 *= y1;
+		this.self._11 *= y1;
+		this.self._12 *= y1;
+		this.self._13 *= y1;
+		this.self._20 *= z1;
+		this.self._21 *= z1;
+		this.self._22 *= z1;
+		this.self._23 *= z1;
+		this.self._30 = loc.x;
+		this.self._31 = loc.y;
+		this.self._32 = loc.z;
+		return this;
+	}
+	,decompose: function(loc,quat,scale) {
+		loc.x = this.self._30;
+		loc.y = this.self._31;
+		loc.z = this.self._32;
+		var _this = iron_math_Mat4.helpVec;
+		_this.x = this.self._00;
+		_this.y = this.self._01;
+		_this.z = this.self._02;
+		_this.w = 1.0;
+		var _this1 = _this;
+		scale.x = Math.sqrt(_this1.x * _this1.x + _this1.y * _this1.y + _this1.z * _this1.z);
+		var _this2 = iron_math_Mat4.helpVec;
+		_this2.x = this.self._10;
+		_this2.y = this.self._11;
+		_this2.z = this.self._12;
+		_this2.w = 1.0;
+		var _this3 = _this2;
+		scale.y = Math.sqrt(_this3.x * _this3.x + _this3.y * _this3.y + _this3.z * _this3.z);
+		var _this4 = iron_math_Mat4.helpVec;
+		_this4.x = this.self._20;
+		_this4.y = this.self._21;
+		_this4.z = this.self._22;
+		_this4.w = 1.0;
+		var _this5 = _this4;
+		scale.z = Math.sqrt(_this5.x * _this5.x + _this5.y * _this5.y + _this5.z * _this5.z);
+		var _this6 = this.self;
+		var m3 = _this6._12;
+		var m4 = _this6._22;
+		var m5 = _this6._32;
+		var m6 = _this6._13;
+		var m7 = _this6._23;
+		var m8 = _this6._33;
+		var c00 = _this6._11 * (m4 * m8 - m5 * m7) - _this6._21 * (m3 * m8 - m5 * m6) + _this6._31 * (m3 * m7 - m4 * m6);
+		var m31 = _this6._12;
+		var m41 = _this6._22;
+		var m51 = _this6._32;
+		var m61 = _this6._13;
+		var m71 = _this6._23;
+		var m81 = _this6._33;
+		var c01 = _this6._10 * (m41 * m81 - m51 * m71) - _this6._20 * (m31 * m81 - m51 * m61) + _this6._30 * (m31 * m71 - m41 * m61);
+		var m32 = _this6._11;
+		var m42 = _this6._21;
+		var m52 = _this6._31;
+		var m62 = _this6._13;
+		var m72 = _this6._23;
+		var m82 = _this6._33;
+		var c02 = _this6._10 * (m42 * m82 - m52 * m72) - _this6._20 * (m32 * m82 - m52 * m62) + _this6._30 * (m32 * m72 - m42 * m62);
+		var m33 = _this6._11;
+		var m43 = _this6._21;
+		var m53 = _this6._31;
+		var m63 = _this6._12;
+		var m73 = _this6._22;
+		var m83 = _this6._32;
+		var c03 = _this6._10 * (m43 * m83 - m53 * m73) - _this6._20 * (m33 * m83 - m53 * m63) + _this6._30 * (m33 * m73 - m43 * m63);
+		if(_this6._00 * c00 - _this6._01 * c01 + _this6._02 * c02 - _this6._03 * c03 < 0.0) {
+			scale.x = -scale.x;
+		}
+		var invs = 1.0 / scale.x;
+		iron_math_Mat4.helpMat.self._00 = this.self._00 * invs;
+		iron_math_Mat4.helpMat.self._01 = this.self._01 * invs;
+		iron_math_Mat4.helpMat.self._02 = this.self._02 * invs;
+		invs = 1.0 / scale.y;
+		iron_math_Mat4.helpMat.self._10 = this.self._10 * invs;
+		iron_math_Mat4.helpMat.self._11 = this.self._11 * invs;
+		iron_math_Mat4.helpMat.self._12 = this.self._12 * invs;
+		invs = 1.0 / scale.z;
+		iron_math_Mat4.helpMat.self._20 = this.self._20 * invs;
+		iron_math_Mat4.helpMat.self._21 = this.self._21 * invs;
+		iron_math_Mat4.helpMat.self._22 = this.self._22 * invs;
+		var m = iron_math_Mat4.helpMat;
+		var m11 = m.self._00;
+		var m12 = m.self._10;
+		var m13 = m.self._20;
+		var m21 = m.self._01;
+		var m22 = m.self._11;
+		var m23 = m.self._21;
+		var m311 = m.self._02;
+		var m321 = m.self._12;
+		var m331 = m.self._22;
+		var tr = m11 + m22 + m331;
+		var s = 0.0;
+		if(tr > 0) {
+			s = 0.5 / Math.sqrt(tr + 1.0);
+			quat.w = 0.25 / s;
+			quat.x = (m321 - m23) * s;
+			quat.y = (m13 - m311) * s;
+			quat.z = (m21 - m12) * s;
+		} else if(m11 > m22 && m11 > m331) {
+			s = 2.0 * Math.sqrt(1.0 + m11 - m22 - m331);
+			quat.w = (m321 - m23) / s;
+			quat.x = 0.25 * s;
+			quat.y = (m12 + m21) / s;
+			quat.z = (m13 + m311) / s;
+		} else if(m22 > m331) {
+			s = 2.0 * Math.sqrt(1.0 + m22 - m11 - m331);
+			quat.w = (m13 - m311) / s;
+			quat.x = (m12 + m21) / s;
+			quat.y = 0.25 * s;
+			quat.z = (m23 + m321) / s;
+		} else {
+			s = 2.0 * Math.sqrt(1.0 + m331 - m11 - m22);
+			quat.w = (m21 - m12) / s;
+			quat.x = (m13 + m311) / s;
+			quat.y = (m23 + m321) / s;
+			quat.z = 0.25 * s;
+		}
+		return this;
+	}
+	,setLoc: function(v) {
+		this.self._30 = v.x;
+		this.self._31 = v.y;
+		this.self._32 = v.z;
+		return this;
+	}
+	,fromQuat: function(q) {
+		var x = q.x;
+		var y = q.y;
+		var z = q.z;
+		var w = q.w;
+		var x2 = x + x;
+		var y2 = y + y;
+		var z2 = z + z;
+		var xx = x * x2;
+		var xy = x * y2;
+		var xz = x * z2;
+		var yy = y * y2;
+		var yz = y * z2;
+		var zz = z * z2;
+		var wx = w * x2;
+		var wy = w * y2;
+		var wz = w * z2;
+		this.self._00 = 1.0 - (yy + zz);
+		this.self._10 = xy - wz;
+		this.self._20 = xz + wy;
+		this.self._01 = xy + wz;
+		this.self._11 = 1.0 - (xx + zz);
+		this.self._21 = yz - wx;
+		this.self._02 = xz - wy;
+		this.self._12 = yz + wx;
+		this.self._22 = 1.0 - (xx + yy);
+		this.self._03 = 0.0;
+		this.self._13 = 0.0;
+		this.self._23 = 0.0;
+		this.self._30 = 0.0;
+		this.self._31 = 0.0;
+		this.self._32 = 0.0;
+		this.self._33 = 1.0;
+		return this;
+	}
+	,setIdentity: function() {
+		this.self._00 = 1.0;
+		this.self._01 = 0.0;
+		this.self._02 = 0.0;
+		this.self._03 = 0.0;
+		this.self._10 = 0.0;
+		this.self._11 = 1.0;
+		this.self._12 = 0.0;
+		this.self._13 = 0.0;
+		this.self._20 = 0.0;
+		this.self._21 = 0.0;
+		this.self._22 = 1.0;
+		this.self._23 = 0.0;
+		this.self._30 = 0.0;
+		this.self._31 = 0.0;
+		this.self._32 = 0.0;
+		this.self._33 = 1.0;
+		return this;
+	}
+	,initTranslate: function(x,y,z) {
+		if(z == null) {
+			z = 0.0;
+		}
+		if(y == null) {
+			y = 0.0;
+		}
+		if(x == null) {
+			x = 0.0;
+		}
+		this.self._00 = 1.0;
+		this.self._01 = 0.0;
+		this.self._02 = 0.0;
+		this.self._03 = 0.0;
+		this.self._10 = 0.0;
+		this.self._11 = 1.0;
+		this.self._12 = 0.0;
+		this.self._13 = 0.0;
+		this.self._20 = 0.0;
+		this.self._21 = 0.0;
+		this.self._22 = 1.0;
+		this.self._23 = 0.0;
+		this.self._30 = x;
+		this.self._31 = y;
+		this.self._32 = z;
+		this.self._33 = 1.0;
+		return this;
+	}
+	,translate: function(x,y,z) {
+		this.self._00 += x * this.self._03;
+		this.self._01 += y * this.self._03;
+		this.self._02 += z * this.self._03;
+		this.self._10 += x * this.self._13;
+		this.self._11 += y * this.self._13;
+		this.self._12 += z * this.self._13;
+		this.self._20 += x * this.self._23;
+		this.self._21 += y * this.self._23;
+		this.self._22 += z * this.self._23;
+		this.self._30 += x * this.self._33;
+		this.self._31 += y * this.self._33;
+		this.self._32 += z * this.self._33;
+		return this;
+	}
+	,scale: function(v) {
+		var x = v.x;
+		var y = v.y;
+		var z = v.z;
+		this.self._00 *= x;
+		this.self._01 *= x;
+		this.self._02 *= x;
+		this.self._03 *= x;
+		this.self._10 *= y;
+		this.self._11 *= y;
+		this.self._12 *= y;
+		this.self._13 *= y;
+		this.self._20 *= z;
+		this.self._21 *= z;
+		this.self._22 *= z;
+		this.self._23 *= z;
+		return this;
+	}
+	,multmats3x4: function(a,b) {
+		var a00 = a.self._00;
+		var a01 = a.self._01;
+		var a02 = a.self._02;
+		var a03 = a.self._03;
+		var a10 = a.self._10;
+		var a11 = a.self._11;
+		var a12 = a.self._12;
+		var a13 = a.self._13;
+		var a20 = a.self._20;
+		var a21 = a.self._21;
+		var a22 = a.self._22;
+		var a23 = a.self._23;
+		var a30 = a.self._30;
+		var a31 = a.self._31;
+		var a32 = a.self._32;
+		var a33 = a.self._33;
+		var b0 = b.self._00;
+		var b1 = b.self._10;
+		var b2 = b.self._20;
+		var b3 = b.self._30;
+		this.self._00 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._10 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._20 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._30 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		b0 = b.self._01;
+		b1 = b.self._11;
+		b2 = b.self._21;
+		b3 = b.self._31;
+		this.self._01 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._11 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._21 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._31 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		b0 = b.self._02;
+		b1 = b.self._12;
+		b2 = b.self._22;
+		b3 = b.self._32;
+		this.self._02 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._12 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._22 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._32 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		this.self._03 = 0;
+		this.self._13 = 0;
+		this.self._23 = 0;
+		this.self._33 = 1;
+		return this;
+	}
+	,multmats: function(b,a) {
+		var a00 = a.self._00;
+		var a01 = a.self._01;
+		var a02 = a.self._02;
+		var a03 = a.self._03;
+		var a10 = a.self._10;
+		var a11 = a.self._11;
+		var a12 = a.self._12;
+		var a13 = a.self._13;
+		var a20 = a.self._20;
+		var a21 = a.self._21;
+		var a22 = a.self._22;
+		var a23 = a.self._23;
+		var a30 = a.self._30;
+		var a31 = a.self._31;
+		var a32 = a.self._32;
+		var a33 = a.self._33;
+		var b0 = b.self._00;
+		var b1 = b.self._10;
+		var b2 = b.self._20;
+		var b3 = b.self._30;
+		this.self._00 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._10 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._20 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._30 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		b0 = b.self._01;
+		b1 = b.self._11;
+		b2 = b.self._21;
+		b3 = b.self._31;
+		this.self._01 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._11 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._21 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._31 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		b0 = b.self._02;
+		b1 = b.self._12;
+		b2 = b.self._22;
+		b3 = b.self._32;
+		this.self._02 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._12 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._22 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._32 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		b0 = b.self._03;
+		b1 = b.self._13;
+		b2 = b.self._23;
+		b3 = b.self._33;
+		this.self._03 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._13 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._23 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._33 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		return this;
+	}
+	,multmat: function(m) {
+		var a00 = this.self._00;
+		var a01 = this.self._01;
+		var a02 = this.self._02;
+		var a03 = this.self._03;
+		var a10 = this.self._10;
+		var a11 = this.self._11;
+		var a12 = this.self._12;
+		var a13 = this.self._13;
+		var a20 = this.self._20;
+		var a21 = this.self._21;
+		var a22 = this.self._22;
+		var a23 = this.self._23;
+		var a30 = this.self._30;
+		var a31 = this.self._31;
+		var a32 = this.self._32;
+		var a33 = this.self._33;
+		var b0 = m.self._00;
+		var b1 = m.self._10;
+		var b2 = m.self._20;
+		var b3 = m.self._30;
+		this.self._00 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._10 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._20 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._30 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		b0 = m.self._01;
+		b1 = m.self._11;
+		b2 = m.self._21;
+		b3 = m.self._31;
+		this.self._01 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._11 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._21 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._31 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		b0 = m.self._02;
+		b1 = m.self._12;
+		b2 = m.self._22;
+		b3 = m.self._32;
+		this.self._02 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._12 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._22 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._32 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		b0 = m.self._03;
+		b1 = m.self._13;
+		b2 = m.self._23;
+		b3 = m.self._33;
+		this.self._03 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._13 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._23 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._33 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		return this;
+	}
+	,getInverse: function(m) {
+		var a00 = m.self._00;
+		var a01 = m.self._01;
+		var a02 = m.self._02;
+		var a03 = m.self._03;
+		var a10 = m.self._10;
+		var a11 = m.self._11;
+		var a12 = m.self._12;
+		var a13 = m.self._13;
+		var a20 = m.self._20;
+		var a21 = m.self._21;
+		var a22 = m.self._22;
+		var a23 = m.self._23;
+		var a30 = m.self._30;
+		var a31 = m.self._31;
+		var a32 = m.self._32;
+		var a33 = m.self._33;
+		var b00 = a00 * a11 - a01 * a10;
+		var b01 = a00 * a12 - a02 * a10;
+		var b02 = a00 * a13 - a03 * a10;
+		var b03 = a01 * a12 - a02 * a11;
+		var b04 = a01 * a13 - a03 * a11;
+		var b05 = a02 * a13 - a03 * a12;
+		var b06 = a20 * a31 - a21 * a30;
+		var b07 = a20 * a32 - a22 * a30;
+		var b08 = a20 * a33 - a23 * a30;
+		var b09 = a21 * a32 - a22 * a31;
+		var b10 = a21 * a33 - a23 * a31;
+		var b11 = a22 * a33 - a23 * a32;
+		var det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+		if(det == 0.0) {
+			this.self._00 = 1.0;
+			this.self._01 = 0.0;
+			this.self._02 = 0.0;
+			this.self._03 = 0.0;
+			this.self._10 = 0.0;
+			this.self._11 = 1.0;
+			this.self._12 = 0.0;
+			this.self._13 = 0.0;
+			this.self._20 = 0.0;
+			this.self._21 = 0.0;
+			this.self._22 = 1.0;
+			this.self._23 = 0.0;
+			this.self._30 = 0.0;
+			this.self._31 = 0.0;
+			this.self._32 = 0.0;
+			this.self._33 = 1.0;
+			return this;
+		}
+		det = 1.0 / det;
+		this.self._00 = (a11 * b11 - a12 * b10 + a13 * b09) * det;
+		this.self._01 = (a02 * b10 - a01 * b11 - a03 * b09) * det;
+		this.self._02 = (a31 * b05 - a32 * b04 + a33 * b03) * det;
+		this.self._03 = (a22 * b04 - a21 * b05 - a23 * b03) * det;
+		this.self._10 = (a12 * b08 - a10 * b11 - a13 * b07) * det;
+		this.self._11 = (a00 * b11 - a02 * b08 + a03 * b07) * det;
+		this.self._12 = (a32 * b02 - a30 * b05 - a33 * b01) * det;
+		this.self._13 = (a20 * b05 - a22 * b02 + a23 * b01) * det;
+		this.self._20 = (a10 * b10 - a11 * b08 + a13 * b06) * det;
+		this.self._21 = (a01 * b08 - a00 * b10 - a03 * b06) * det;
+		this.self._22 = (a30 * b04 - a31 * b02 + a33 * b00) * det;
+		this.self._23 = (a21 * b02 - a20 * b04 - a23 * b00) * det;
+		this.self._30 = (a11 * b07 - a10 * b09 - a12 * b06) * det;
+		this.self._31 = (a00 * b09 - a01 * b07 + a02 * b06) * det;
+		this.self._32 = (a31 * b01 - a30 * b03 - a32 * b00) * det;
+		this.self._33 = (a20 * b03 - a21 * b01 + a22 * b00) * det;
+		return this;
+	}
+	,transpose: function() {
+		var f = this.self._01;
+		this.self._01 = this.self._10;
+		this.self._10 = f;
+		f = this.self._02;
+		this.self._02 = this.self._20;
+		this.self._20 = f;
+		f = this.self._03;
+		this.self._03 = this.self._30;
+		this.self._30 = f;
+		f = this.self._12;
+		this.self._12 = this.self._21;
+		this.self._21 = f;
+		f = this.self._13;
+		this.self._13 = this.self._31;
+		this.self._31 = f;
+		f = this.self._23;
+		this.self._23 = this.self._32;
+		this.self._32 = f;
+		return this;
+	}
+	,transpose3x3: function() {
+		var f = this.self._01;
+		this.self._01 = this.self._10;
+		this.self._10 = f;
+		f = this.self._02;
+		this.self._02 = this.self._20;
+		this.self._20 = f;
+		f = this.self._12;
+		this.self._12 = this.self._21;
+		this.self._21 = f;
+		return this;
+	}
+	,clone: function() {
+		return new iron_math_Mat4(this.self._00,this.self._10,this.self._20,this.self._30,this.self._01,this.self._11,this.self._21,this.self._31,this.self._02,this.self._12,this.self._22,this.self._32,this.self._03,this.self._13,this.self._23,this.self._33);
+	}
+	,setF32: function(a,offset) {
+		if(offset == null) {
+			offset = 0;
+		}
+		this.self._00 = a[offset];
+		this.self._10 = a[1 + offset];
+		this.self._20 = a[2 + offset];
+		this.self._30 = a[3 + offset];
+		this.self._01 = a[4 + offset];
+		this.self._11 = a[5 + offset];
+		this.self._21 = a[6 + offset];
+		this.self._31 = a[7 + offset];
+		this.self._02 = a[8 + offset];
+		this.self._12 = a[9 + offset];
+		this.self._22 = a[10 + offset];
+		this.self._32 = a[11 + offset];
+		this.self._03 = a[12 + offset];
+		this.self._13 = a[13 + offset];
+		this.self._23 = a[14 + offset];
+		this.self._33 = a[15 + offset];
+		return this;
+	}
+	,setFrom: function(m) {
+		this.self._00 = m.self._00;
+		this.self._01 = m.self._01;
+		this.self._02 = m.self._02;
+		this.self._03 = m.self._03;
+		this.self._10 = m.self._10;
+		this.self._11 = m.self._11;
+		this.self._12 = m.self._12;
+		this.self._13 = m.self._13;
+		this.self._20 = m.self._20;
+		this.self._21 = m.self._21;
+		this.self._22 = m.self._22;
+		this.self._23 = m.self._23;
+		this.self._30 = m.self._30;
+		this.self._31 = m.self._31;
+		this.self._32 = m.self._32;
+		this.self._33 = m.self._33;
+		return this;
+	}
+	,getLoc: function() {
+		return new iron_math_Vec4(this.self._30,this.self._31,this.self._32,this.self._33);
+	}
+	,getScale: function() {
+		return new iron_math_Vec4(Math.sqrt(this.self._00 * this.self._00 + this.self._10 * this.self._10 + this.self._20 * this.self._20),Math.sqrt(this.self._01 * this.self._01 + this.self._11 * this.self._11 + this.self._21 * this.self._21),Math.sqrt(this.self._02 * this.self._02 + this.self._12 * this.self._12 + this.self._22 * this.self._22));
+	}
+	,mult: function(s) {
+		this.self._00 *= s;
+		this.self._10 *= s;
+		this.self._20 *= s;
+		this.self._30 *= s;
+		this.self._01 *= s;
+		this.self._11 *= s;
+		this.self._21 *= s;
+		this.self._31 *= s;
+		this.self._02 *= s;
+		this.self._12 *= s;
+		this.self._22 *= s;
+		this.self._32 *= s;
+		this.self._03 *= s;
+		this.self._13 *= s;
+		this.self._23 *= s;
+		this.self._33 *= s;
+		return this;
+	}
+	,toRotation: function() {
+		var _this = iron_math_Mat4.helpVec;
+		_this.x = this.self._00;
+		_this.y = this.self._01;
+		_this.z = this.self._02;
+		_this.w = 1.0;
+		var _this1 = _this;
+		var scale = 1.0 / Math.sqrt(_this1.x * _this1.x + _this1.y * _this1.y + _this1.z * _this1.z);
+		this.self._00 *= scale;
+		this.self._01 *= scale;
+		this.self._02 *= scale;
+		var _this2 = iron_math_Mat4.helpVec;
+		_this2.x = this.self._10;
+		_this2.y = this.self._11;
+		_this2.z = this.self._12;
+		_this2.w = 1.0;
+		var _this3 = _this2;
+		scale = 1.0 / Math.sqrt(_this3.x * _this3.x + _this3.y * _this3.y + _this3.z * _this3.z);
+		this.self._10 *= scale;
+		this.self._11 *= scale;
+		this.self._12 *= scale;
+		var _this4 = iron_math_Mat4.helpVec;
+		_this4.x = this.self._20;
+		_this4.y = this.self._21;
+		_this4.z = this.self._22;
+		_this4.w = 1.0;
+		var _this5 = _this4;
+		scale = 1.0 / Math.sqrt(_this5.x * _this5.x + _this5.y * _this5.y + _this5.z * _this5.z);
+		this.self._20 *= scale;
+		this.self._21 *= scale;
+		this.self._22 *= scale;
+		this.self._03 = 0.0;
+		this.self._13 = 0.0;
+		this.self._23 = 0.0;
+		this.self._30 = 0.0;
+		this.self._31 = 0.0;
+		this.self._32 = 0.0;
+		this.self._33 = 1.0;
+		return this;
+	}
+	,setLookAt: function(eye,center,up) {
+		var f0 = center.x - eye.x;
+		var f1 = center.y - eye.y;
+		var f2 = center.z - eye.z;
+		var n = 1.0 / Math.sqrt(f0 * f0 + f1 * f1 + f2 * f2);
+		f0 *= n;
+		f1 *= n;
+		f2 *= n;
+		var s0 = f1 * up.z - f2 * up.y;
+		var s1 = f2 * up.x - f0 * up.z;
+		var s2 = f0 * up.y - f1 * up.x;
+		n = 1.0 / Math.sqrt(s0 * s0 + s1 * s1 + s2 * s2);
+		s0 *= n;
+		s1 *= n;
+		s2 *= n;
+		var u0 = s1 * f2 - s2 * f1;
+		var u1 = s2 * f0 - s0 * f2;
+		var u2 = s0 * f1 - s1 * f0;
+		var d0 = -eye.x * s0 - eye.y * s1 - eye.z * s2;
+		var d1 = -eye.x * u0 - eye.y * u1 - eye.z * u2;
+		var d2 = eye.x * f0 + eye.y * f1 + eye.z * f2;
+		this.self._00 = s0;
+		this.self._10 = s1;
+		this.self._20 = s2;
+		this.self._30 = d0;
+		this.self._01 = u0;
+		this.self._11 = u1;
+		this.self._21 = u2;
+		this.self._31 = d1;
+		this.self._02 = -f0;
+		this.self._12 = -f1;
+		this.self._22 = -f2;
+		this.self._32 = d2;
+		this.self._03 = 0.0;
+		this.self._13 = 0.0;
+		this.self._23 = 0.0;
+		this.self._33 = 1.0;
+		return this;
+	}
+	,applyQuat: function(q) {
+		var _this = iron_math_Mat4.helpMat;
+		var x = q.x;
+		var y = q.y;
+		var z = q.z;
+		var w = q.w;
+		var x2 = x + x;
+		var y2 = y + y;
+		var z2 = z + z;
+		var xx = x * x2;
+		var xy = x * y2;
+		var xz = x * z2;
+		var yy = y * y2;
+		var yz = y * z2;
+		var zz = z * z2;
+		var wx = w * x2;
+		var wy = w * y2;
+		var wz = w * z2;
+		_this.self._00 = 1.0 - (yy + zz);
+		_this.self._10 = xy - wz;
+		_this.self._20 = xz + wy;
+		_this.self._01 = xy + wz;
+		_this.self._11 = 1.0 - (xx + zz);
+		_this.self._21 = yz - wx;
+		_this.self._02 = xz - wy;
+		_this.self._12 = yz + wx;
+		_this.self._22 = 1.0 - (xx + yy);
+		_this.self._03 = 0.0;
+		_this.self._13 = 0.0;
+		_this.self._23 = 0.0;
+		_this.self._30 = 0.0;
+		_this.self._31 = 0.0;
+		_this.self._32 = 0.0;
+		_this.self._33 = 1.0;
+		var m = iron_math_Mat4.helpMat;
+		var a00 = this.self._00;
+		var a01 = this.self._01;
+		var a02 = this.self._02;
+		var a03 = this.self._03;
+		var a10 = this.self._10;
+		var a11 = this.self._11;
+		var a12 = this.self._12;
+		var a13 = this.self._13;
+		var a20 = this.self._20;
+		var a21 = this.self._21;
+		var a22 = this.self._22;
+		var a23 = this.self._23;
+		var a30 = this.self._30;
+		var a31 = this.self._31;
+		var a32 = this.self._32;
+		var a33 = this.self._33;
+		var b0 = m.self._00;
+		var b1 = m.self._10;
+		var b2 = m.self._20;
+		var b3 = m.self._30;
+		this.self._00 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._10 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._20 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._30 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		b0 = m.self._01;
+		b1 = m.self._11;
+		b2 = m.self._21;
+		b3 = m.self._31;
+		this.self._01 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._11 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._21 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._31 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		b0 = m.self._02;
+		b1 = m.self._12;
+		b2 = m.self._22;
+		b3 = m.self._32;
+		this.self._02 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._12 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._22 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._32 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+		b0 = m.self._03;
+		b1 = m.self._13;
+		b2 = m.self._23;
+		b3 = m.self._33;
+		this.self._03 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
+		this.self._13 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
+		this.self._23 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
+		this.self._33 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
+	}
+	,right: function() {
+		return new iron_math_Vec4(this.self._00,this.self._01,this.self._02);
+	}
+	,look: function() {
+		return new iron_math_Vec4(this.self._10,this.self._11,this.self._12);
+	}
+	,up: function() {
+		return new iron_math_Vec4(this.self._20,this.self._21,this.self._22);
+	}
+	,get__00: function() {
+		return this.self._00;
+	}
+	,set__00: function(f) {
+		return this.self._00 = f;
+	}
+	,get__01: function() {
+		return this.self._01;
+	}
+	,set__01: function(f) {
+		return this.self._01 = f;
+	}
+	,get__02: function() {
+		return this.self._02;
+	}
+	,set__02: function(f) {
+		return this.self._02 = f;
+	}
+	,get__03: function() {
+		return this.self._03;
+	}
+	,set__03: function(f) {
+		return this.self._03 = f;
+	}
+	,get__10: function() {
+		return this.self._10;
+	}
+	,set__10: function(f) {
+		return this.self._10 = f;
+	}
+	,get__11: function() {
+		return this.self._11;
+	}
+	,set__11: function(f) {
+		return this.self._11 = f;
+	}
+	,get__12: function() {
+		return this.self._12;
+	}
+	,set__12: function(f) {
+		return this.self._12 = f;
+	}
+	,get__13: function() {
+		return this.self._13;
+	}
+	,set__13: function(f) {
+		return this.self._13 = f;
+	}
+	,get__20: function() {
+		return this.self._20;
+	}
+	,set__20: function(f) {
+		return this.self._20 = f;
+	}
+	,get__21: function() {
+		return this.self._21;
+	}
+	,set__21: function(f) {
+		return this.self._21 = f;
+	}
+	,get__22: function() {
+		return this.self._22;
+	}
+	,set__22: function(f) {
+		return this.self._22 = f;
+	}
+	,get__23: function() {
+		return this.self._23;
+	}
+	,set__23: function(f) {
+		return this.self._23 = f;
+	}
+	,get__30: function() {
+		return this.self._30;
+	}
+	,set__30: function(f) {
+		return this.self._30 = f;
+	}
+	,get__31: function() {
+		return this.self._31;
+	}
+	,set__31: function(f) {
+		return this.self._31 = f;
+	}
+	,get__32: function() {
+		return this.self._32;
+	}
+	,set__32: function(f) {
+		return this.self._32 = f;
+	}
+	,get__33: function() {
+		return this.self._33;
+	}
+	,set__33: function(f) {
+		return this.self._33 = f;
+	}
+	,toString: function() {
+		return "[[" + this.self._00 + ", " + this.self._10 + ", " + this.self._20 + ", " + this.self._30 + "], [" + this.self._01 + ", " + this.self._11 + ", " + this.self._21 + ", " + this.self._31 + "], [" + this.self._02 + ", " + this.self._12 + ", " + this.self._22 + ", " + this.self._32 + "], [" + this.self._03 + ", " + this.self._13 + ", " + this.self._23 + ", " + this.self._33 + "]]";
+	}
+	,__class__: iron_math_Mat4
+	,__properties__: {set__33:"set__33",get__33:"get__33",set__32:"set__32",get__32:"get__32",set__31:"set__31",get__31:"get__31",set__30:"set__30",get__30:"get__30",set__23:"set__23",get__23:"get__23",set__22:"set__22",get__22:"get__22",set__21:"set__21",get__21:"get__21",set__20:"set__20",get__20:"get__20",set__13:"set__13",get__13:"get__13",set__12:"set__12",get__12:"get__12",set__11:"set__11",get__11:"get__11",set__10:"set__10",get__10:"get__10",set__03:"set__03",get__03:"get__03",set__02:"set__02",get__02:"get__02",set__01:"set__01",get__01:"get__01",set__00:"set__00",get__00:"get__00"}
+};
+var iron_math_Quat = function(x,y,z,w) {
+	if(w == null) {
+		w = 1.0;
+	}
+	if(z == null) {
+		z = 0.0;
+	}
+	if(y == null) {
+		y = 0.0;
+	}
+	if(x == null) {
+		x = 0.0;
+	}
+	this.x = x;
+	this.y = y;
+	this.z = z;
+	this.w = w;
+};
+$hxClasses["iron.math.Quat"] = iron_math_Quat;
+iron_math_Quat.__name__ = "iron.math.Quat";
+iron_math_Quat.prototype = {
+	x: null
+	,y: null
+	,z: null
+	,w: null
+	,set: function(x,y,z,w) {
+		this.x = x;
+		this.y = y;
+		this.z = z;
+		this.w = w;
+		return this;
+	}
+	,fromAxisAngle: function(axis,angle) {
+		var s = Math.sin(angle * 0.5);
+		this.x = axis.x * s;
+		this.y = axis.y * s;
+		this.z = axis.z * s;
+		this.w = Math.cos(angle * 0.5);
+		var l = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+		if(l == 0.0) {
+			this.x = 0;
+			this.y = 0;
+			this.z = 0;
+			this.w = 0;
+		} else {
+			l = 1.0 / l;
+			this.x *= l;
+			this.y *= l;
+			this.z *= l;
+			this.w *= l;
+		}
+		return this;
+	}
+	,toAxisAngle: function(axis) {
+		var l = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+		if(l == 0.0) {
+			this.x = 0;
+			this.y = 0;
+			this.z = 0;
+			this.w = 0;
+		} else {
+			l = 1.0 / l;
+			this.x *= l;
+			this.y *= l;
+			this.z *= l;
+			this.w *= l;
+		}
+		var angle = 2 * Math.acos(this.w);
+		var s = Math.sqrt(1 - this.w * this.w);
+		if(s < 0.001) {
+			axis.x = this.x;
+			axis.y = this.y;
+			axis.z = this.z;
+		} else {
+			axis.x = this.x / s;
+			axis.y = this.y / s;
+			axis.z = this.z / s;
+		}
+		return angle;
+	}
+	,fromMat: function(m) {
+		var _this = iron_math_Quat.helpMat;
+		_this.self._00 = m.self._00;
+		_this.self._01 = m.self._01;
+		_this.self._02 = m.self._02;
+		_this.self._03 = m.self._03;
+		_this.self._10 = m.self._10;
+		_this.self._11 = m.self._11;
+		_this.self._12 = m.self._12;
+		_this.self._13 = m.self._13;
+		_this.self._20 = m.self._20;
+		_this.self._21 = m.self._21;
+		_this.self._22 = m.self._22;
+		_this.self._23 = m.self._23;
+		_this.self._30 = m.self._30;
+		_this.self._31 = m.self._31;
+		_this.self._32 = m.self._32;
+		_this.self._33 = m.self._33;
+		var _this1 = iron_math_Quat.helpMat;
+		var _this2 = iron_math_Mat4.helpVec;
+		_this2.x = _this1.self._00;
+		_this2.y = _this1.self._01;
+		_this2.z = _this1.self._02;
+		_this2.w = 1.0;
+		var _this3 = _this2;
+		var scale = 1.0 / Math.sqrt(_this3.x * _this3.x + _this3.y * _this3.y + _this3.z * _this3.z);
+		_this1.self._00 *= scale;
+		_this1.self._01 *= scale;
+		_this1.self._02 *= scale;
+		var _this4 = iron_math_Mat4.helpVec;
+		_this4.x = _this1.self._10;
+		_this4.y = _this1.self._11;
+		_this4.z = _this1.self._12;
+		_this4.w = 1.0;
+		var _this5 = _this4;
+		scale = 1.0 / Math.sqrt(_this5.x * _this5.x + _this5.y * _this5.y + _this5.z * _this5.z);
+		_this1.self._10 *= scale;
+		_this1.self._11 *= scale;
+		_this1.self._12 *= scale;
+		var _this6 = iron_math_Mat4.helpVec;
+		_this6.x = _this1.self._20;
+		_this6.y = _this1.self._21;
+		_this6.z = _this1.self._22;
+		_this6.w = 1.0;
+		var _this7 = _this6;
+		scale = 1.0 / Math.sqrt(_this7.x * _this7.x + _this7.y * _this7.y + _this7.z * _this7.z);
+		_this1.self._20 *= scale;
+		_this1.self._21 *= scale;
+		_this1.self._22 *= scale;
+		_this1.self._03 = 0.0;
+		_this1.self._13 = 0.0;
+		_this1.self._23 = 0.0;
+		_this1.self._30 = 0.0;
+		_this1.self._31 = 0.0;
+		_this1.self._32 = 0.0;
+		_this1.self._33 = 1.0;
+		var m1 = iron_math_Quat.helpMat;
+		var m11 = m1.self._00;
+		var m12 = m1.self._10;
+		var m13 = m1.self._20;
+		var m21 = m1.self._01;
+		var m22 = m1.self._11;
+		var m23 = m1.self._21;
+		var m31 = m1.self._02;
+		var m32 = m1.self._12;
+		var m33 = m1.self._22;
+		var tr = m11 + m22 + m33;
+		var s = 0.0;
+		if(tr > 0) {
+			s = 0.5 / Math.sqrt(tr + 1.0);
+			this.w = 0.25 / s;
+			this.x = (m32 - m23) * s;
+			this.y = (m13 - m31) * s;
+			this.z = (m21 - m12) * s;
+		} else if(m11 > m22 && m11 > m33) {
+			s = 2.0 * Math.sqrt(1.0 + m11 - m22 - m33);
+			this.w = (m32 - m23) / s;
+			this.x = 0.25 * s;
+			this.y = (m12 + m21) / s;
+			this.z = (m13 + m31) / s;
+		} else if(m22 > m33) {
+			s = 2.0 * Math.sqrt(1.0 + m22 - m11 - m33);
+			this.w = (m13 - m31) / s;
+			this.x = (m12 + m21) / s;
+			this.y = 0.25 * s;
+			this.z = (m23 + m32) / s;
+		} else {
+			s = 2.0 * Math.sqrt(1.0 + m33 - m11 - m22);
+			this.w = (m21 - m12) / s;
+			this.x = (m13 + m31) / s;
+			this.y = (m23 + m32) / s;
+			this.z = 0.25 * s;
+		}
+		return this;
+	}
+	,fromRotationMat: function(m) {
+		var m11 = m.self._00;
+		var m12 = m.self._10;
+		var m13 = m.self._20;
+		var m21 = m.self._01;
+		var m22 = m.self._11;
+		var m23 = m.self._21;
+		var m31 = m.self._02;
+		var m32 = m.self._12;
+		var m33 = m.self._22;
+		var tr = m11 + m22 + m33;
+		var s = 0.0;
+		if(tr > 0) {
+			s = 0.5 / Math.sqrt(tr + 1.0);
+			this.w = 0.25 / s;
+			this.x = (m32 - m23) * s;
+			this.y = (m13 - m31) * s;
+			this.z = (m21 - m12) * s;
+		} else if(m11 > m22 && m11 > m33) {
+			s = 2.0 * Math.sqrt(1.0 + m11 - m22 - m33);
+			this.w = (m32 - m23) / s;
+			this.x = 0.25 * s;
+			this.y = (m12 + m21) / s;
+			this.z = (m13 + m31) / s;
+		} else if(m22 > m33) {
+			s = 2.0 * Math.sqrt(1.0 + m22 - m11 - m33);
+			this.w = (m13 - m31) / s;
+			this.x = (m12 + m21) / s;
+			this.y = 0.25 * s;
+			this.z = (m23 + m32) / s;
+		} else {
+			s = 2.0 * Math.sqrt(1.0 + m33 - m11 - m22);
+			this.w = (m21 - m12) / s;
+			this.x = (m13 + m31) / s;
+			this.y = (m23 + m32) / s;
+			this.z = 0.25 * s;
+		}
+		return this;
+	}
+	,mult: function(q) {
+		var q1x = this.x;
+		var q1y = this.y;
+		var q1z = this.z;
+		var q1w = this.w;
+		var q2x = q.x;
+		var q2y = q.y;
+		var q2z = q.z;
+		var q2w = q.w;
+		this.x = q1x * q2w + q1w * q2x + q1y * q2z - q1z * q2y;
+		this.y = q1w * q2y - q1x * q2z + q1y * q2w + q1z * q2x;
+		this.z = q1w * q2z + q1x * q2y - q1y * q2x + q1z * q2w;
+		this.w = q1w * q2w - q1x * q2x - q1y * q2y - q1z * q2z;
+		return this;
+	}
+	,multquats: function(q1,q2) {
+		var q1x = q1.x;
+		var q1y = q1.y;
+		var q1z = q1.z;
+		var q1w = q1.w;
+		var q2x = q2.x;
+		var q2y = q2.y;
+		var q2z = q2.z;
+		var q2w = q2.w;
+		this.x = q1x * q2w + q1w * q2x + q1y * q2z - q1z * q2y;
+		this.y = q1w * q2y - q1x * q2z + q1y * q2w + q1z * q2x;
+		this.z = q1w * q2z + q1x * q2y - q1y * q2x + q1z * q2w;
+		this.w = q1w * q2w - q1x * q2x - q1y * q2y - q1z * q2z;
+		return this;
+	}
+	,normalize: function() {
+		var l = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+		if(l == 0.0) {
+			this.x = 0;
+			this.y = 0;
+			this.z = 0;
+			this.w = 0;
+		} else {
+			l = 1.0 / l;
+			this.x *= l;
+			this.y *= l;
+			this.z *= l;
+			this.w *= l;
+		}
+		return this;
+	}
+	,setFrom: function(q) {
+		this.x = q.x;
+		this.y = q.y;
+		this.z = q.z;
+		this.w = q.w;
+		return this;
+	}
+	,getEuler: function() {
+		var a = -2 * (this.x * this.z - this.w * this.y);
+		var b = this.w * this.w + this.x * this.x - this.y * this.y - this.z * this.z;
+		var c = 2 * (this.x * this.y + this.w * this.z);
+		var d = -2 * (this.y * this.z - this.w * this.x);
+		var e = this.w * this.w - this.x * this.x + this.y * this.y - this.z * this.z;
+		return new iron_math_Vec4(Math.atan2(d,e),Math.atan2(a,b),Math.asin(c));
+	}
+	,fromEuler: function(x,y,z) {
+		var f = x / 2;
+		var c1 = Math.cos(f);
+		var s1 = Math.sin(f);
+		f = y / 2;
+		var c2 = Math.cos(f);
+		var s2 = Math.sin(f);
+		f = z / 2;
+		var c3 = Math.cos(f);
+		var s3 = Math.sin(f);
+		this.x = s1 * c2 * c3 + c1 * s2 * s3;
+		this.y = c1 * s2 * c3 + s1 * c2 * s3;
+		this.z = c1 * c2 * s3 - s1 * s2 * c3;
+		this.w = c1 * c2 * c3 - s1 * s2 * s3;
+		return this;
+	}
+	,lerp: function(from,to,s) {
+		var fromx = from.x;
+		var fromy = from.y;
+		var fromz = from.z;
+		var fromw = from.w;
+		var dot = from.x * to.x + from.y * to.y + from.z * to.z + from.w * to.w;
+		if(dot < 0.0) {
+			fromx = -fromx;
+			fromy = -fromy;
+			fromz = -fromz;
+			fromw = -fromw;
+		}
+		this.x = fromx + (to.x - fromx) * s;
+		this.y = fromy + (to.y - fromy) * s;
+		this.z = fromz + (to.z - fromz) * s;
+		this.w = fromw + (to.w - fromw) * s;
+		var l = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+		if(l == 0.0) {
+			this.x = 0;
+			this.y = 0;
+			this.z = 0;
+			this.w = 0;
+		} else {
+			l = 1.0 / l;
+			this.x *= l;
+			this.y *= l;
+			this.z *= l;
+			this.w *= l;
+		}
+		return this;
+	}
+	,dot: function(q) {
+		return this.x * q.x + this.y * q.y + this.z * q.z + this.w * q.w;
+	}
+	,fromTo: function(v1,v2) {
+		var a = iron_math_Quat.helpVec0;
+		var dot = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+		if(dot < -0.999999) {
+			var a1 = iron_math_Quat.xAxis;
+			var ax = a1.x;
+			var ay = a1.y;
+			var az = a1.z;
+			var bx = v1.x;
+			var by = v1.y;
+			var bz = v1.z;
+			a.x = ay * bz - az * by;
+			a.y = az * bx - ax * bz;
+			a.z = ax * by - ay * bx;
+			if(Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z) < 0.000001) {
+				var a2 = iron_math_Quat.yAxis;
+				var ax1 = a2.x;
+				var ay1 = a2.y;
+				var az1 = a2.z;
+				var bx1 = v1.x;
+				var by1 = v1.y;
+				var bz1 = v1.z;
+				a.x = ay1 * bz1 - az1 * by1;
+				a.y = az1 * bx1 - ax1 * bz1;
+				a.z = ax1 * by1 - ay1 * bx1;
+			}
+			var n = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+			if(n > 0.0) {
+				var invN = 1.0 / n;
+				a.x *= invN;
+				a.y *= invN;
+				a.z *= invN;
+			}
+			var angle = Math.PI;
+			var s = Math.sin(angle * 0.5);
+			this.x = a.x * s;
+			this.y = a.y * s;
+			this.z = a.z * s;
+			this.w = Math.cos(angle * 0.5);
+			var l = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+			if(l == 0.0) {
+				this.x = 0;
+				this.y = 0;
+				this.z = 0;
+				this.w = 0;
+			} else {
+				l = 1.0 / l;
+				this.x *= l;
+				this.y *= l;
+				this.z *= l;
+				this.w *= l;
+			}
+		} else if(dot > 0.999999) {
+			this.x = 0;
+			this.y = 0;
+			this.z = 0;
+			this.w = 1;
+		} else {
+			var ax2 = v1.x;
+			var ay2 = v1.y;
+			var az2 = v1.z;
+			var bx2 = v2.x;
+			var by2 = v2.y;
+			var bz2 = v2.z;
+			a.x = ay2 * bz2 - az2 * by2;
+			a.y = az2 * bx2 - ax2 * bz2;
+			a.z = ax2 * by2 - ay2 * bx2;
+			this.x = a.x;
+			this.y = a.y;
+			this.z = a.z;
+			this.w = 1 + dot;
+			var l1 = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+			if(l1 == 0.0) {
+				this.x = 0;
+				this.y = 0;
+				this.z = 0;
+				this.w = 0;
+			} else {
+				l1 = 1.0 / l1;
+				this.x *= l1;
+				this.y *= l1;
+				this.z *= l1;
+				this.w *= l1;
+			}
+		}
+		return this;
+	}
+	,toString: function() {
+		return this.x + ", " + this.y + ", " + this.z + ", " + this.w;
+	}
+	,__class__: iron_math_Quat
+};
+var armory_trait_physics_bullet_RigidBody = function(shape,mass,friction,restitution,group,mask,params,flags) {
+	if(mask == null) {
+		mask = 1;
+	}
+	if(group == null) {
+		group = 1;
+	}
+	if(restitution == null) {
+		restitution = 0.0;
+	}
+	if(friction == null) {
+		friction = 0.5;
+	}
+	if(mass == null) {
+		mass = 1.0;
+	}
+	if(shape == null) {
+		shape = 0;
+	}
+	this.heightData = null;
+	this.onContact = null;
+	this.onReady = null;
+	this.id = 0;
+	this.ready = false;
+	this.body = null;
+	this.trigger = false;
+	this.mask = 1;
+	this.group = 1;
+	this.ccd = false;
+	this.destroyed = false;
+	this.transform = null;
+	iron_Trait.call(this);
+	if(armory_trait_physics_bullet_RigidBody.nullvec) {
+		armory_trait_physics_bullet_RigidBody.nullvec = false;
+		armory_trait_physics_bullet_RigidBody.vec1 = new Ammo.btVector3(0,0,0);
+		armory_trait_physics_bullet_RigidBody.vec2 = new Ammo.btVector3(0,0,0);
+		armory_trait_physics_bullet_RigidBody.vec3 = new Ammo.btVector3(0,0,0);
+		armory_trait_physics_bullet_RigidBody.quat1 = new Ammo.btQuaternion(0,0,0,0);
+		armory_trait_physics_bullet_RigidBody.trans1 = new Ammo.btTransform();
+		armory_trait_physics_bullet_RigidBody.trans2 = new Ammo.btTransform();
+	}
+	this.shape = shape;
+	this.mass = mass;
+	this.friction = friction;
+	this.restitution = restitution;
+	this.group = group;
+	this.mask = mask;
+	if(params == null) {
+		params = [0.04,0.1,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0];
+	}
+	if(flags == null) {
+		flags = [false,false,false,false];
+	}
+	this.linearDamping = params[0];
+	this.angularDamping = params[1];
+	this.linearFactors = [params[2],params[3],params[4]];
+	this.angularFactors = [params[5],params[6],params[7]];
+	this.collisionMargin = params[8];
+	this.deactivationParams = [params[9],params[10],params[11]];
+	this.animated = flags[0];
+	this.trigger = flags[1];
+	this.ccd = flags[2];
+	this.staticObj = flags[3];
+	this.notifyOnAdd($bind(this,this.init));
+};
+$hxClasses["armory.trait.physics.bullet.RigidBody"] = armory_trait_physics_bullet_RigidBody;
+armory_trait_physics_bullet_RigidBody.__name__ = "armory.trait.physics.bullet.RigidBody";
+armory_trait_physics_bullet_RigidBody.__super__ = iron_Trait;
+armory_trait_physics_bullet_RigidBody.prototype = $extend(iron_Trait.prototype,{
+	shape: null
+	,physics: null
+	,transform: null
+	,mass: null
+	,friction: null
+	,restitution: null
+	,collisionMargin: null
+	,linearDamping: null
+	,angularDamping: null
+	,animated: null
+	,staticObj: null
+	,destroyed: null
+	,linearFactors: null
+	,angularFactors: null
+	,deactivationParams: null
+	,ccd: null
+	,group: null
+	,mask: null
+	,trigger: null
+	,bodyScaleX: null
+	,bodyScaleY: null
+	,bodyScaleZ: null
+	,currentScaleX: null
+	,currentScaleY: null
+	,currentScaleZ: null
+	,meshInterface: null
+	,body: null
+	,motionState: null
+	,btshape: null
+	,ready: null
+	,id: null
+	,onReady: null
+	,onContact: null
+	,heightData: null
+	,withMargin: function(f) {
+		return f - f * this.collisionMargin;
+	}
+	,notifyOnReady: function(f) {
+		this.onReady = f;
+		if(this.ready) {
+			this.onReady();
+		}
+	}
+	,init: function() {
+		if(this.ready) {
+			return;
+		}
+		this.ready = true;
+		if(!((this.object) instanceof iron_object_MeshObject)) {
+			return;
+		}
+		this.transform = this.object.transform;
+		this.physics = armory_trait_physics_bullet_PhysicsWorld.active;
+		if(this.shape == 0) {
+			var f = this.transform.dim.x / 2;
+			armory_trait_physics_bullet_RigidBody.vec1.setX(f - f * this.collisionMargin);
+			var f1 = this.transform.dim.y / 2;
+			armory_trait_physics_bullet_RigidBody.vec1.setY(f1 - f1 * this.collisionMargin);
+			var f2 = this.transform.dim.z / 2;
+			armory_trait_physics_bullet_RigidBody.vec1.setZ(f2 - f2 * this.collisionMargin);
+			this.btshape = new Ammo.btBoxShape(armory_trait_physics_bullet_RigidBody.vec1);
+		} else if(this.shape == 1) {
+			var f3 = this.transform.dim.x / 2;
+			this.btshape = new Ammo.btSphereShape(f3 - f3 * this.collisionMargin);
+		} else if(this.shape == 2) {
+			var shapeConvex = this.fillConvexHull(this.transform.scale,this.collisionMargin);
+			this.btshape = shapeConvex;
+		} else if(this.shape == 4) {
+			var f4 = this.transform.dim.x / 2;
+			var f5 = this.transform.dim.z;
+			var coneZ = new Ammo.btConeShapeZ(f4 - f4 * this.collisionMargin,f5 - f5 * this.collisionMargin);
+			var cone = coneZ;
+			this.btshape = cone;
+		} else if(this.shape == 5) {
+			var f6 = this.transform.dim.x / 2;
+			armory_trait_physics_bullet_RigidBody.vec1.setX(f6 - f6 * this.collisionMargin);
+			var f7 = this.transform.dim.y / 2;
+			armory_trait_physics_bullet_RigidBody.vec1.setY(f7 - f7 * this.collisionMargin);
+			var f8 = this.transform.dim.z / 2;
+			armory_trait_physics_bullet_RigidBody.vec1.setZ(f8 - f8 * this.collisionMargin);
+			var cylZ = new Ammo.btCylinderShapeZ(armory_trait_physics_bullet_RigidBody.vec1);
+			var cyl = cylZ;
+			this.btshape = cyl;
+		} else if(this.shape == 6) {
+			var r = this.transform.dim.x / 2;
+			var f9 = this.transform.dim.z - r * 2;
+			var capsZ = new Ammo.btCapsuleShapeZ(r - r * this.collisionMargin,f9 - f9 * this.collisionMargin);
+			var caps = capsZ;
+			this.btshape = caps;
+		} else if(this.shape == 3) {
+			this.meshInterface = this.fillTriangleMesh(this.transform.scale);
+			if(this.mass > 0) {
+				var shapeGImpact = new Ammo.btGImpactMeshShape(this.meshInterface);
+				shapeGImpact.updateBound();
+				var shapeConcave = shapeGImpact;
+				this.btshape = shapeConcave;
+				if(!this.physics.gimpactRegistered) {
+					new Ammo.GImpactCollisionAlgorithm().registerAlgorithm(this.physics.dispatcher);
+					this.physics.gimpactRegistered = true;
+				}
+			} else {
+				var shapeBvh = new Ammo.btBvhTriangleMeshShape(this.meshInterface,true,true);
+				var shapeTri = shapeBvh;
+				var shapeConcave1 = shapeTri;
+				this.btshape = shapeConcave1;
+			}
+		} else if(this.shape == 7) {
+			var length = this.heightData.length;
+			if(armory_trait_physics_bullet_RigidBody.ammoArray == -1) {
+				armory_trait_physics_bullet_RigidBody.ammoArray = Ammo._malloc(length);
+			}
+			var _g = 0;
+			var _g1 = length;
+			while(_g < _g1) {
+				var i = _g++;
+				Ammo.HEAPU8[armory_trait_physics_bullet_RigidBody.ammoArray + i] = this.heightData.b[i];
+			}
+			var slice = Math.sqrt(length) | 0;
+			var axis = 2;
+			var dataType = 5;
+			this.btshape = new Ammo.btHeightfieldTerrainShape(slice,slice,armory_trait_physics_bullet_RigidBody.ammoArray,0.00392156862745098,0,1,axis,dataType,false);
+			armory_trait_physics_bullet_RigidBody.vec1.setX(this.transform.dim.x / slice);
+			armory_trait_physics_bullet_RigidBody.vec1.setY(this.transform.dim.y / slice);
+			armory_trait_physics_bullet_RigidBody.vec1.setZ(this.transform.dim.z);
+			this.btshape.setLocalScaling(armory_trait_physics_bullet_RigidBody.vec1);
+		}
+		armory_trait_physics_bullet_RigidBody.trans1.setIdentity();
+		armory_trait_physics_bullet_RigidBody.vec1.setX(this.transform.world.self._30);
+		armory_trait_physics_bullet_RigidBody.vec1.setY(this.transform.world.self._31);
+		armory_trait_physics_bullet_RigidBody.vec1.setZ(this.transform.world.self._32);
+		armory_trait_physics_bullet_RigidBody.trans1.setOrigin(armory_trait_physics_bullet_RigidBody.vec1);
+		var _this = armory_trait_physics_bullet_RigidBody.quat;
+		var m = this.transform.world;
+		var _this1 = iron_math_Quat.helpMat;
+		_this1.self._00 = m.self._00;
+		_this1.self._01 = m.self._01;
+		_this1.self._02 = m.self._02;
+		_this1.self._03 = m.self._03;
+		_this1.self._10 = m.self._10;
+		_this1.self._11 = m.self._11;
+		_this1.self._12 = m.self._12;
+		_this1.self._13 = m.self._13;
+		_this1.self._20 = m.self._20;
+		_this1.self._21 = m.self._21;
+		_this1.self._22 = m.self._22;
+		_this1.self._23 = m.self._23;
+		_this1.self._30 = m.self._30;
+		_this1.self._31 = m.self._31;
+		_this1.self._32 = m.self._32;
+		_this1.self._33 = m.self._33;
+		var _this11 = iron_math_Quat.helpMat;
+		var _this2 = iron_math_Mat4.helpVec;
+		_this2.x = _this11.self._00;
+		_this2.y = _this11.self._01;
+		_this2.z = _this11.self._02;
+		_this2.w = 1.0;
+		var _this3 = _this2;
+		var scale = 1.0 / Math.sqrt(_this3.x * _this3.x + _this3.y * _this3.y + _this3.z * _this3.z);
+		_this11.self._00 *= scale;
+		_this11.self._01 *= scale;
+		_this11.self._02 *= scale;
+		var _this4 = iron_math_Mat4.helpVec;
+		_this4.x = _this11.self._10;
+		_this4.y = _this11.self._11;
+		_this4.z = _this11.self._12;
+		_this4.w = 1.0;
+		var _this5 = _this4;
+		scale = 1.0 / Math.sqrt(_this5.x * _this5.x + _this5.y * _this5.y + _this5.z * _this5.z);
+		_this11.self._10 *= scale;
+		_this11.self._11 *= scale;
+		_this11.self._12 *= scale;
+		var _this6 = iron_math_Mat4.helpVec;
+		_this6.x = _this11.self._20;
+		_this6.y = _this11.self._21;
+		_this6.z = _this11.self._22;
+		_this6.w = 1.0;
+		var _this7 = _this6;
+		scale = 1.0 / Math.sqrt(_this7.x * _this7.x + _this7.y * _this7.y + _this7.z * _this7.z);
+		_this11.self._20 *= scale;
+		_this11.self._21 *= scale;
+		_this11.self._22 *= scale;
+		_this11.self._03 = 0.0;
+		_this11.self._13 = 0.0;
+		_this11.self._23 = 0.0;
+		_this11.self._30 = 0.0;
+		_this11.self._31 = 0.0;
+		_this11.self._32 = 0.0;
+		_this11.self._33 = 1.0;
+		var m1 = iron_math_Quat.helpMat;
+		var m11 = m1.self._00;
+		var m12 = m1.self._10;
+		var m13 = m1.self._20;
+		var m21 = m1.self._01;
+		var m22 = m1.self._11;
+		var m23 = m1.self._21;
+		var m31 = m1.self._02;
+		var m32 = m1.self._12;
+		var m33 = m1.self._22;
+		var tr = m11 + m22 + m33;
+		var s = 0.0;
+		if(tr > 0) {
+			s = 0.5 / Math.sqrt(tr + 1.0);
+			_this.w = 0.25 / s;
+			_this.x = (m32 - m23) * s;
+			_this.y = (m13 - m31) * s;
+			_this.z = (m21 - m12) * s;
+		} else if(m11 > m22 && m11 > m33) {
+			s = 2.0 * Math.sqrt(1.0 + m11 - m22 - m33);
+			_this.w = (m32 - m23) / s;
+			_this.x = 0.25 * s;
+			_this.y = (m12 + m21) / s;
+			_this.z = (m13 + m31) / s;
+		} else if(m22 > m33) {
+			s = 2.0 * Math.sqrt(1.0 + m22 - m11 - m33);
+			_this.w = (m13 - m31) / s;
+			_this.x = (m12 + m21) / s;
+			_this.y = 0.25 * s;
+			_this.z = (m23 + m32) / s;
+		} else {
+			s = 2.0 * Math.sqrt(1.0 + m33 - m11 - m22);
+			_this.w = (m21 - m12) / s;
+			_this.x = (m13 + m31) / s;
+			_this.y = (m23 + m32) / s;
+			_this.z = 0.25 * s;
+		}
+		armory_trait_physics_bullet_RigidBody.quat1.setValue(armory_trait_physics_bullet_RigidBody.quat.x,armory_trait_physics_bullet_RigidBody.quat.y,armory_trait_physics_bullet_RigidBody.quat.z,armory_trait_physics_bullet_RigidBody.quat.w);
+		armory_trait_physics_bullet_RigidBody.trans1.setRotation(armory_trait_physics_bullet_RigidBody.quat1);
+		var centerOfMassOffset = armory_trait_physics_bullet_RigidBody.trans2;
+		centerOfMassOffset.setIdentity();
+		this.motionState = new Ammo.btDefaultMotionState(armory_trait_physics_bullet_RigidBody.trans1,centerOfMassOffset);
+		armory_trait_physics_bullet_RigidBody.vec1.setX(0);
+		armory_trait_physics_bullet_RigidBody.vec1.setY(0);
+		armory_trait_physics_bullet_RigidBody.vec1.setZ(0);
+		var inertia = armory_trait_physics_bullet_RigidBody.vec1;
+		if(this.staticObj || this.animated) {
+			this.mass = 0;
+		}
+		if(this.mass > 0) {
+			this.btshape.calculateLocalInertia(this.mass,inertia);
+		}
+		var bodyCI = new Ammo.btRigidBodyConstructionInfo(this.mass,this.motionState,this.btshape,inertia);
+		this.body = new Ammo.btRigidBody(bodyCI);
+		var bodyColl = this.body;
+		bodyColl.setFriction(this.friction);
+		if(this.shape == 1 || this.shape == 5 || this.shape == 4 || this.shape == 6) {
+			this.angularDamping += this.friction;
+		}
+		bodyColl.setRestitution(this.restitution);
+		if(this.deactivationParams != null) {
+			this.setDeactivationParams(this.deactivationParams[0],this.deactivationParams[1],this.deactivationParams[2]);
+		} else {
+			this.setActivationState(4);
+		}
+		if(this.linearDamping != 0.04 || this.angularDamping != 0.1) {
+			this.body.setDamping(this.linearDamping,this.angularDamping);
+		}
+		if(this.linearFactors != null) {
+			this.setLinearFactor(this.linearFactors[0],this.linearFactors[1],this.linearFactors[2]);
+		}
+		if(this.angularFactors != null) {
+			this.setAngularFactor(this.angularFactors[0],this.angularFactors[1],this.angularFactors[2]);
+		}
+		if(this.trigger) {
+			bodyColl.setCollisionFlags(bodyColl.getCollisionFlags() | armory_trait_physics_bullet_RigidBody.CF_NO_CONTACT_RESPONSE);
+		}
+		if(this.animated) {
+			bodyColl.setCollisionFlags(bodyColl.getCollisionFlags() | armory_trait_physics_bullet_RigidBody.CF_KINEMATIC_OBJECT);
+			bodyColl.setCollisionFlags(bodyColl.getCollisionFlags() & ~armory_trait_physics_bullet_RigidBody.CF_STATIC_OBJECT);
+		}
+		if(this.staticObj && !this.animated) {
+			bodyColl.setCollisionFlags(bodyColl.getCollisionFlags() | armory_trait_physics_bullet_RigidBody.CF_STATIC_OBJECT);
+		}
+		if(this.ccd) {
+			this.setCcd(this.transform.radius);
+		}
+		this.bodyScaleX = this.currentScaleX = this.transform.scale.x;
+		this.bodyScaleY = this.currentScaleY = this.transform.scale.y;
+		this.bodyScaleZ = this.currentScaleZ = this.transform.scale.z;
+		this.id = armory_trait_physics_bullet_RigidBody.nextId;
+		armory_trait_physics_bullet_RigidBody.nextId++;
+		this.body.userIndex = this.id;
+		this.physics.addRigidBody(this);
+		this.notifyOnRemove($bind(this,this.removeFromWorld));
+		if(this.onReady != null) {
+			this.onReady();
+		}
+		Ammo.destroy(bodyCI);
+	}
+	,physicsUpdate: function() {
+		if(!this.ready) {
+			return;
+		}
+		if(this.animated) {
+			this.syncTransform();
+		} else {
+			var bodyColl = this.body;
+			var trans = bodyColl.getWorldTransform();
+			var p = trans.getOrigin();
+			var q = trans.getRotation();
+			var qw = q;
+			var _this = this.transform.loc;
+			var x = p.x();
+			var y = p.y();
+			var z = p.z();
+			_this.x = x;
+			_this.y = y;
+			_this.z = z;
+			_this.w = 1.0;
+			var _this1 = this.transform.rot;
+			var x1 = qw.x();
+			var y1 = qw.y();
+			var z1 = qw.z();
+			var w = qw.w();
+			_this1.x = x1;
+			_this1.y = y1;
+			_this1.z = z1;
+			_this1.w = w;
+			if(this.object.parent != null) {
+				var ptransform = this.object.parent.transform;
+				this.transform.loc.x -= ptransform.world.self._30;
+				this.transform.loc.y -= ptransform.world.self._31;
+				this.transform.loc.z -= ptransform.world.self._32;
+			}
+			this.transform.buildMatrix();
+		}
+		if(this.onContact != null) {
+			var rbs = this.physics.getContacts(this);
+			if(rbs != null) {
+				var _g = 0;
+				while(_g < rbs.length) {
+					var rb = rbs[_g];
+					++_g;
+					var _g1 = 0;
+					var _g11 = this.onContact;
+					while(_g1 < _g11.length) {
+						var f = _g11[_g1];
+						++_g1;
+						f(rb);
+					}
+				}
+			}
+		}
+	}
+	,removeFromWorld: function() {
+		if(this.physics != null) {
+			this.physics.removeRigidBody(this);
+		}
+	}
+	,activate: function() {
+		var bodyColl = this.body;
+		bodyColl.activate(false);
+	}
+	,disableGravity: function() {
+		armory_trait_physics_bullet_RigidBody.vec1.setValue(0,0,0);
+		this.body.setGravity(armory_trait_physics_bullet_RigidBody.vec1);
+	}
+	,enableGravity: function() {
+		this.body.setGravity(this.physics.world.getGravity());
+	}
+	,setGravity: function(v) {
+		armory_trait_physics_bullet_RigidBody.vec1.setValue(v.x,v.y,v.z);
+		this.body.setGravity(armory_trait_physics_bullet_RigidBody.vec1);
+	}
+	,setActivationState: function(newState) {
+		var bodyColl = this.body;
+		bodyColl.setActivationState(newState);
+	}
+	,setDeactivationParams: function(linearThreshold,angularThreshold,time) {
+		this.body.setSleepingThresholds(linearThreshold,angularThreshold);
+	}
+	,applyForce: function(force,loc) {
+		this.activate();
+		armory_trait_physics_bullet_RigidBody.vec1.setValue(force.x,force.y,force.z);
+		if(loc == null) {
+			this.body.applyCentralForce(armory_trait_physics_bullet_RigidBody.vec1);
+		} else {
+			armory_trait_physics_bullet_RigidBody.vec2.setValue(loc.x,loc.y,loc.z);
+			this.body.applyForce(armory_trait_physics_bullet_RigidBody.vec1,armory_trait_physics_bullet_RigidBody.vec2);
+		}
+	}
+	,applyImpulse: function(impulse,loc) {
+		this.activate();
+		armory_trait_physics_bullet_RigidBody.vec1.setValue(impulse.x,impulse.y,impulse.z);
+		if(loc == null) {
+			this.body.applyCentralImpulse(armory_trait_physics_bullet_RigidBody.vec1);
+		} else {
+			armory_trait_physics_bullet_RigidBody.vec2.setValue(loc.x,loc.y,loc.z);
+			this.body.applyImpulse(armory_trait_physics_bullet_RigidBody.vec1,armory_trait_physics_bullet_RigidBody.vec2);
+		}
+	}
+	,applyTorque: function(torque) {
+		this.activate();
+		armory_trait_physics_bullet_RigidBody.vec1.setValue(torque.x,torque.y,torque.z);
+		this.body.applyTorque(armory_trait_physics_bullet_RigidBody.vec1);
+	}
+	,applyTorqueImpulse: function(torque) {
+		this.activate();
+		armory_trait_physics_bullet_RigidBody.vec1.setValue(torque.x,torque.y,torque.z);
+		this.body.applyTorqueImpulse(armory_trait_physics_bullet_RigidBody.vec1);
+	}
+	,setLinearFactor: function(x,y,z) {
+		armory_trait_physics_bullet_RigidBody.vec1.setValue(x,y,z);
+		this.body.setLinearFactor(armory_trait_physics_bullet_RigidBody.vec1);
+	}
+	,setAngularFactor: function(x,y,z) {
+		armory_trait_physics_bullet_RigidBody.vec1.setValue(x,y,z);
+		this.body.setAngularFactor(armory_trait_physics_bullet_RigidBody.vec1);
+	}
+	,getLinearVelocity: function() {
+		var v = this.body.getLinearVelocity();
+		return new iron_math_Vec4(v.x(),v.y(),v.z());
+	}
+	,setLinearVelocity: function(x,y,z) {
+		armory_trait_physics_bullet_RigidBody.vec1.setValue(x,y,z);
+		this.body.setLinearVelocity(armory_trait_physics_bullet_RigidBody.vec1);
+	}
+	,getAngularVelocity: function() {
+		var v = this.body.getAngularVelocity();
+		return new iron_math_Vec4(v.x(),v.y(),v.z());
+	}
+	,setAngularVelocity: function(x,y,z) {
+		armory_trait_physics_bullet_RigidBody.vec1.setValue(x,y,z);
+		this.body.setAngularVelocity(armory_trait_physics_bullet_RigidBody.vec1);
+	}
+	,setFriction: function(f) {
+		var bodyColl = this.body;
+		bodyColl.setFriction(f);
+		this.friction = f;
+	}
+	,notifyOnContact: function(f) {
+		if(this.onContact == null) {
+			this.onContact = [];
+		}
+		this.onContact.push(f);
+	}
+	,removeContact: function(f) {
+		HxOverrides.remove(this.onContact,f);
+	}
+	,setScale: function(v) {
+		this.currentScaleX = v.x;
+		this.currentScaleY = v.y;
+		this.currentScaleZ = v.z;
+		armory_trait_physics_bullet_RigidBody.vec1.setX(v.x / this.bodyScaleX);
+		armory_trait_physics_bullet_RigidBody.vec1.setY(v.y / this.bodyScaleY);
+		armory_trait_physics_bullet_RigidBody.vec1.setZ(v.z / this.bodyScaleZ);
+		this.btshape.setLocalScaling(armory_trait_physics_bullet_RigidBody.vec1);
+		var worldDyn = this.physics.world;
+		var worldCol = worldDyn;
+		worldCol.updateSingleAabb(this.body);
+	}
+	,syncTransform: function() {
+		var t = this.transform;
+		t.buildMatrix();
+		armory_trait_physics_bullet_RigidBody.vec1.setValue(t.world.self._30,t.world.self._31,t.world.self._32);
+		armory_trait_physics_bullet_RigidBody.trans1.setOrigin(armory_trait_physics_bullet_RigidBody.vec1);
+		var _this = armory_trait_physics_bullet_RigidBody.quat;
+		var m = t.world;
+		var _this1 = iron_math_Quat.helpMat;
+		_this1.self._00 = m.self._00;
+		_this1.self._01 = m.self._01;
+		_this1.self._02 = m.self._02;
+		_this1.self._03 = m.self._03;
+		_this1.self._10 = m.self._10;
+		_this1.self._11 = m.self._11;
+		_this1.self._12 = m.self._12;
+		_this1.self._13 = m.self._13;
+		_this1.self._20 = m.self._20;
+		_this1.self._21 = m.self._21;
+		_this1.self._22 = m.self._22;
+		_this1.self._23 = m.self._23;
+		_this1.self._30 = m.self._30;
+		_this1.self._31 = m.self._31;
+		_this1.self._32 = m.self._32;
+		_this1.self._33 = m.self._33;
+		var _this11 = iron_math_Quat.helpMat;
+		var _this2 = iron_math_Mat4.helpVec;
+		_this2.x = _this11.self._00;
+		_this2.y = _this11.self._01;
+		_this2.z = _this11.self._02;
+		_this2.w = 1.0;
+		var _this3 = _this2;
+		var scale = 1.0 / Math.sqrt(_this3.x * _this3.x + _this3.y * _this3.y + _this3.z * _this3.z);
+		_this11.self._00 *= scale;
+		_this11.self._01 *= scale;
+		_this11.self._02 *= scale;
+		var _this4 = iron_math_Mat4.helpVec;
+		_this4.x = _this11.self._10;
+		_this4.y = _this11.self._11;
+		_this4.z = _this11.self._12;
+		_this4.w = 1.0;
+		var _this5 = _this4;
+		scale = 1.0 / Math.sqrt(_this5.x * _this5.x + _this5.y * _this5.y + _this5.z * _this5.z);
+		_this11.self._10 *= scale;
+		_this11.self._11 *= scale;
+		_this11.self._12 *= scale;
+		var _this6 = iron_math_Mat4.helpVec;
+		_this6.x = _this11.self._20;
+		_this6.y = _this11.self._21;
+		_this6.z = _this11.self._22;
+		_this6.w = 1.0;
+		var _this7 = _this6;
+		scale = 1.0 / Math.sqrt(_this7.x * _this7.x + _this7.y * _this7.y + _this7.z * _this7.z);
+		_this11.self._20 *= scale;
+		_this11.self._21 *= scale;
+		_this11.self._22 *= scale;
+		_this11.self._03 = 0.0;
+		_this11.self._13 = 0.0;
+		_this11.self._23 = 0.0;
+		_this11.self._30 = 0.0;
+		_this11.self._31 = 0.0;
+		_this11.self._32 = 0.0;
+		_this11.self._33 = 1.0;
+		var m1 = iron_math_Quat.helpMat;
+		var m11 = m1.self._00;
+		var m12 = m1.self._10;
+		var m13 = m1.self._20;
+		var m21 = m1.self._01;
+		var m22 = m1.self._11;
+		var m23 = m1.self._21;
+		var m31 = m1.self._02;
+		var m32 = m1.self._12;
+		var m33 = m1.self._22;
+		var tr = m11 + m22 + m33;
+		var s = 0.0;
+		if(tr > 0) {
+			s = 0.5 / Math.sqrt(tr + 1.0);
+			_this.w = 0.25 / s;
+			_this.x = (m32 - m23) * s;
+			_this.y = (m13 - m31) * s;
+			_this.z = (m21 - m12) * s;
+		} else if(m11 > m22 && m11 > m33) {
+			s = 2.0 * Math.sqrt(1.0 + m11 - m22 - m33);
+			_this.w = (m32 - m23) / s;
+			_this.x = 0.25 * s;
+			_this.y = (m12 + m21) / s;
+			_this.z = (m13 + m31) / s;
+		} else if(m22 > m33) {
+			s = 2.0 * Math.sqrt(1.0 + m22 - m11 - m33);
+			_this.w = (m13 - m31) / s;
+			_this.x = (m12 + m21) / s;
+			_this.y = 0.25 * s;
+			_this.z = (m23 + m32) / s;
+		} else {
+			s = 2.0 * Math.sqrt(1.0 + m33 - m11 - m22);
+			_this.w = (m21 - m12) / s;
+			_this.x = (m13 + m31) / s;
+			_this.y = (m23 + m32) / s;
+			_this.z = 0.25 * s;
+		}
+		armory_trait_physics_bullet_RigidBody.quat1.setValue(armory_trait_physics_bullet_RigidBody.quat.x,armory_trait_physics_bullet_RigidBody.quat.y,armory_trait_physics_bullet_RigidBody.quat.z,armory_trait_physics_bullet_RigidBody.quat.w);
+		armory_trait_physics_bullet_RigidBody.trans1.setRotation(armory_trait_physics_bullet_RigidBody.quat1);
+		if(this.animated) {
+			this.body.getMotionState().setWorldTransform(armory_trait_physics_bullet_RigidBody.trans1);
+		} else {
+			this.body.setCenterOfMassTransform(armory_trait_physics_bullet_RigidBody.trans1);
+		}
+		if(this.currentScaleX != t.scale.x || this.currentScaleY != t.scale.y || this.currentScaleZ != t.scale.z) {
+			this.setScale(t.scale);
+		}
+		this.activate();
+	}
+	,setCcd: function(sphereRadius,motionThreshold) {
+		if(motionThreshold == null) {
+			motionThreshold = 1e-7;
+		}
+		var bodyColl = this.body;
+		bodyColl.setCcdSweptSphereRadius(sphereRadius);
+		bodyColl.setCcdMotionThreshold(motionThreshold);
+	}
+	,fillConvexHull: function(scale,margin) {
+		var data = (js_Boot.__cast(this.object , iron_object_MeshObject)).data;
+		var shape = armory_trait_physics_bullet_RigidBody.convexHullCache.h[data.__id__];
+		if(shape != null) {
+			armory_trait_physics_bullet_RigidBody.usersCache.set(data,armory_trait_physics_bullet_RigidBody.usersCache.h[data.__id__] + 1);
+			return shape;
+		}
+		shape = new Ammo.btConvexHullShape();
+		armory_trait_physics_bullet_RigidBody.convexHullCache.set(data,shape);
+		armory_trait_physics_bullet_RigidBody.usersCache.set(data,1);
+		var positions = data.geom.positions.values;
+		var sx = scale.x * (1.0 - margin) * 3.0518509475997192e-005;
+		var sy = scale.y * (1.0 - margin) * 3.0518509475997192e-005;
+		var sz = scale.z * (1.0 - margin) * 3.0518509475997192e-005;
+		if(data.raw.scale_pos != null) {
+			sx *= data.raw.scale_pos;
+			sy *= data.raw.scale_pos;
+			sz *= data.raw.scale_pos;
+		}
+		var _g = 0;
+		var _g1 = positions.length / 4 | 0;
+		while(_g < _g1) {
+			var i = _g++;
+			armory_trait_physics_bullet_RigidBody.vec1.setX(positions[i * 4] * sx);
+			armory_trait_physics_bullet_RigidBody.vec1.setY(positions[i * 4 + 1] * sy);
+			armory_trait_physics_bullet_RigidBody.vec1.setZ(positions[i * 4 + 2] * sz);
+			shape.addPoint(armory_trait_physics_bullet_RigidBody.vec1,true);
+		}
+		return shape;
+	}
+	,fillTriangleMesh: function(scale) {
+		var data = (js_Boot.__cast(this.object , iron_object_MeshObject)).data;
+		var triangleMesh = armory_trait_physics_bullet_RigidBody.triangleMeshCache.h[data.__id__];
+		if(triangleMesh != null) {
+			armory_trait_physics_bullet_RigidBody.usersCache.set(data,armory_trait_physics_bullet_RigidBody.usersCache.h[data.__id__] + 1);
+			return triangleMesh;
+		}
+		triangleMesh = new Ammo.btTriangleMesh(true,true);
+		armory_trait_physics_bullet_RigidBody.triangleMeshCache.set(data,triangleMesh);
+		armory_trait_physics_bullet_RigidBody.usersCache.set(data,1);
+		var positions = data.geom.positions.values;
+		var indices = data.geom.indices;
+		var sx = scale.x * 3.0518509475997192e-005;
+		var sy = scale.y * 3.0518509475997192e-005;
+		var sz = scale.z * 3.0518509475997192e-005;
+		if(data.raw.scale_pos != null) {
+			sx *= data.raw.scale_pos;
+			sy *= data.raw.scale_pos;
+			sz *= data.raw.scale_pos;
+		}
+		var _g = 0;
+		while(_g < indices.length) {
+			var ar = indices[_g];
+			++_g;
+			var _g1 = 0;
+			var _g11 = ar.length / 3 | 0;
+			while(_g1 < _g11) {
+				var i = _g1++;
+				armory_trait_physics_bullet_RigidBody.vec1.setX(positions[ar[i * 3] * 4] * sx);
+				armory_trait_physics_bullet_RigidBody.vec1.setY(positions[ar[i * 3] * 4 + 1] * sy);
+				armory_trait_physics_bullet_RigidBody.vec1.setZ(positions[ar[i * 3] * 4 + 2] * sz);
+				armory_trait_physics_bullet_RigidBody.vec2.setX(positions[ar[i * 3 + 1] * 4] * sx);
+				armory_trait_physics_bullet_RigidBody.vec2.setY(positions[ar[i * 3 + 1] * 4 + 1] * sy);
+				armory_trait_physics_bullet_RigidBody.vec2.setZ(positions[ar[i * 3 + 1] * 4 + 2] * sz);
+				armory_trait_physics_bullet_RigidBody.vec3.setX(positions[ar[i * 3 + 2] * 4] * sx);
+				armory_trait_physics_bullet_RigidBody.vec3.setY(positions[ar[i * 3 + 2] * 4 + 1] * sy);
+				armory_trait_physics_bullet_RigidBody.vec3.setZ(positions[ar[i * 3 + 2] * 4 + 2] * sz);
+				triangleMesh.addTriangle(armory_trait_physics_bullet_RigidBody.vec1,armory_trait_physics_bullet_RigidBody.vec2,armory_trait_physics_bullet_RigidBody.vec3);
+			}
+		}
+		return triangleMesh;
+	}
+	,'delete': function() {
+		Ammo.destroy(this.motionState);
+		Ammo.destroy(this.body);
+		if(this.shape == 2 || this.shape == 3) {
+			var data = (js_Boot.__cast(this.object , iron_object_MeshObject)).data;
+			var i = armory_trait_physics_bullet_RigidBody.usersCache.h[data.__id__] - 1;
+			armory_trait_physics_bullet_RigidBody.usersCache.set(data,i);
+			if(this.shape == 3) {
+				Ammo.destroy(this.btshape);
+			}
+			if(i <= 0) {
+				if(this.shape == 2) {
+					Ammo.destroy(this.btshape);
+					armory_trait_physics_bullet_RigidBody.convexHullCache.remove(data);
+				} else {
+					armory_trait_physics_bullet_RigidBody.triangleMeshCache.remove(data);
+					if(this.meshInterface != null) {
+						Ammo.destroy(this.meshInterface);
+					}
+				}
+			}
+		} else {
+			Ammo.destroy(this.btshape);
+		}
+	}
+	,deleteShape: function() {
+		Ammo.destroy(this.btshape);
+	}
+	,__class__: armory_trait_physics_bullet_RigidBody
+});
 var haxe_Log = function() { };
 $hxClasses["haxe.Log"] = haxe_Log;
 haxe_Log.__name__ = "haxe.Log";
@@ -6641,6 +9237,15 @@ haxe_ds_ObjectMap.prototype = {
 		}
 		this.h[id] = value;
 		this.h.__keys__[id] = key;
+	}
+	,remove: function(key) {
+		var id = key.__id__;
+		if(this.h.__keys__[id] == null) {
+			return false;
+		}
+		delete(this.h[id]);
+		delete(this.h.__keys__[id]);
+		return true;
 	}
 	,__class__: haxe_ds_ObjectMap
 };
@@ -9845,409 +12450,598 @@ iron_math_Mat3.prototype = {
 	,__class__: iron_math_Mat3
 	,__properties__: {set__22:"set__22",get__22:"get__22",set__21:"set__21",get__21:"get__21",set__20:"set__20",get__20:"get__20",set__12:"set__12",get__12:"get__12",set__11:"set__11",get__11:"get__11",set__10:"set__10",get__10:"get__10",set__02:"set__02",get__02:"get__02",set__01:"set__01",get__01:"get__01",set__00:"set__00",get__00:"get__00"}
 };
-var kha_math_FastMatrix4 = function(_00,_10,_20,_30,_01,_11,_21,_31,_02,_12,_22,_32,_03,_13,_23,_33) {
-	this._00 = _00;
-	this._10 = _10;
-	this._20 = _20;
-	this._30 = _30;
-	this._01 = _01;
-	this._11 = _11;
-	this._21 = _21;
-	this._31 = _31;
-	this._02 = _02;
-	this._12 = _12;
-	this._22 = _22;
-	this._32 = _32;
-	this._03 = _03;
-	this._13 = _13;
-	this._23 = _23;
-	this._33 = _33;
+var iron_math_Ray = function(origin,direction) {
+	this.origin = origin == null ? new iron_math_Vec4() : origin;
+	this.direction = direction == null ? new iron_math_Vec4() : direction;
 };
-$hxClasses["kha.math.FastMatrix4"] = kha_math_FastMatrix4;
-kha_math_FastMatrix4.__name__ = "kha.math.FastMatrix4";
-kha_math_FastMatrix4.fromMatrix4 = function(m) {
-	return new kha_math_FastMatrix4(m._00,m._10,m._20,m._30,m._01,m._11,m._21,m._31,m._02,m._12,m._22,m._32,m._03,m._13,m._23,m._33);
-};
-kha_math_FastMatrix4.orthogonalProjection = function(left,right,bottom,top,zn,zf) {
-	var tx = -(right + left) / (right - left);
-	var ty = -(top + bottom) / (top - bottom);
-	var tz = -(zf + zn) / (zf - zn);
-	return new kha_math_FastMatrix4(2 / (right - left),0,0,tx,0,2.0 / (top - bottom),0,ty,0,0,-2 / (zf - zn),tz,0,0,0,1);
-};
-kha_math_FastMatrix4.perspectiveProjection = function(fovY,aspect,zn,zf) {
-	var uh = 1.0 / Math.tan(fovY / 2);
-	var uw = uh / aspect;
-	return new kha_math_FastMatrix4(uw,0,0,0,0,uh,0,0,0,0,(zf + zn) / (zn - zf),2 * zf * zn / (zn - zf),0,0,-1,0);
-};
-kha_math_FastMatrix4.lookAt = function(eye,at,up) {
-	var x = at.x - eye.x;
-	var y = at.y - eye.y;
-	var z = at.z - eye.z;
-	if(z == null) {
-		z = 0;
-	}
-	if(y == null) {
-		y = 0;
-	}
-	if(x == null) {
-		x = 0;
-	}
-	var _this_x = x;
-	var _this_y = y;
-	var _this_z = z;
-	var x1 = _this_x;
-	var y1 = _this_y;
-	var z1 = _this_z;
-	if(z1 == null) {
-		z1 = 0;
-	}
-	if(y1 == null) {
-		y1 = 0;
-	}
-	if(x1 == null) {
-		x1 = 0;
-	}
-	var zaxis_x = x1;
-	var zaxis_y = y1;
-	var zaxis_z = z1;
-	var currentLength = Math.sqrt(zaxis_x * zaxis_x + zaxis_y * zaxis_y + zaxis_z * zaxis_z);
-	if(currentLength != 0) {
-		var mul = 1 / currentLength;
-		zaxis_x *= mul;
-		zaxis_y *= mul;
-		zaxis_z *= mul;
-	}
-	var _x = zaxis_y * up.z - zaxis_z * up.y;
-	var _y = zaxis_z * up.x - zaxis_x * up.z;
-	var _z = zaxis_x * up.y - zaxis_y * up.x;
-	var x2 = _x;
-	var y2 = _y;
-	var z2 = _z;
-	if(z2 == null) {
-		z2 = 0;
-	}
-	if(y2 == null) {
-		y2 = 0;
-	}
-	if(x2 == null) {
-		x2 = 0;
-	}
-	var _this_x1 = x2;
-	var _this_y1 = y2;
-	var _this_z1 = z2;
-	var x3 = _this_x1;
-	var y3 = _this_y1;
-	var z3 = _this_z1;
-	if(z3 == null) {
-		z3 = 0;
-	}
-	if(y3 == null) {
-		y3 = 0;
-	}
-	if(x3 == null) {
-		x3 = 0;
-	}
-	var xaxis_x = x3;
-	var xaxis_y = y3;
-	var xaxis_z = z3;
-	var currentLength1 = Math.sqrt(xaxis_x * xaxis_x + xaxis_y * xaxis_y + xaxis_z * xaxis_z);
-	if(currentLength1 != 0) {
-		var mul1 = 1 / currentLength1;
-		xaxis_x *= mul1;
-		xaxis_y *= mul1;
-		xaxis_z *= mul1;
-	}
-	var _x1 = xaxis_y * zaxis_z - xaxis_z * zaxis_y;
-	var _y1 = xaxis_z * zaxis_x - xaxis_x * zaxis_z;
-	var _z1 = xaxis_x * zaxis_y - xaxis_y * zaxis_x;
-	var x4 = _x1;
-	var y4 = _y1;
-	var z4 = _z1;
-	if(z4 == null) {
-		z4 = 0;
-	}
-	if(y4 == null) {
-		y4 = 0;
-	}
-	if(x4 == null) {
-		x4 = 0;
-	}
-	var yaxis_x = x4;
-	var yaxis_y = y4;
-	var yaxis_z = z4;
-	return new kha_math_FastMatrix4(xaxis_x,xaxis_y,xaxis_z,-(xaxis_x * eye.x + xaxis_y * eye.y + xaxis_z * eye.z),yaxis_x,yaxis_y,yaxis_z,-(yaxis_x * eye.x + yaxis_y * eye.y + yaxis_z * eye.z),-zaxis_x,-zaxis_y,-zaxis_z,zaxis_x * eye.x + zaxis_y * eye.y + zaxis_z * eye.z,0,0,0,1);
-};
-kha_math_FastMatrix4.prototype = {
-	_00: null
-	,_10: null
-	,_20: null
-	,_30: null
-	,_01: null
-	,_11: null
-	,_21: null
-	,_31: null
-	,_02: null
-	,_12: null
-	,_22: null
-	,_32: null
-	,_03: null
-	,_13: null
-	,_23: null
-	,_33: null
-	,__class__: kha_math_FastMatrix4
-};
-var iron_math_Mat4 = function(_00,_10,_20,_30,_01,_11,_21,_31,_02,_12,_22,_32,_03,_13,_23,_33) {
-	this.self = new kha_math_FastMatrix4(_00,_10,_20,_30,_01,_11,_21,_31,_02,_12,_22,_32,_03,_13,_23,_33);
-};
-$hxClasses["iron.math.Mat4"] = iron_math_Mat4;
-iron_math_Mat4.__name__ = "iron.math.Mat4";
-iron_math_Mat4.fromFloat32Array = function(a,offset) {
-	if(offset == null) {
-		offset = 0;
-	}
-	return new iron_math_Mat4(a[offset],a[1 + offset],a[2 + offset],a[3 + offset],a[4 + offset],a[5 + offset],a[6 + offset],a[7 + offset],a[8 + offset],a[9 + offset],a[10 + offset],a[11 + offset],a[12 + offset],a[13 + offset],a[14 + offset],a[15 + offset]);
-};
-iron_math_Mat4.identity = function() {
-	return new iron_math_Mat4(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
-};
-iron_math_Mat4.persp = function(fovY,aspect,zn,zf) {
-	var uh = 1.0 / Math.tan(fovY / 2);
-	var uw = uh / aspect;
-	return new iron_math_Mat4(uw,0,0,0,0,uh,0,0,0,0,(zf + zn) / (zn - zf),2 * zf * zn / (zn - zf),0,0,-1,0);
-};
-iron_math_Mat4.ortho = function(left,right,bottom,top,near,far) {
-	var rl = right - left;
-	var tb = top - bottom;
-	var fn = far - near;
-	var tx = -(right + left) / rl;
-	var ty = -(top + bottom) / tb;
-	var tz = -(far + near) / fn;
-	return new iron_math_Mat4(2 / rl,0,0,tx,0,2 / tb,0,ty,0,0,-2 / fn,tz,0,0,0,1);
-};
-iron_math_Mat4.prototype = {
-	self: null
-	,compose: function(loc,quat,sc) {
-		var x = quat.x;
-		var y = quat.y;
-		var z = quat.z;
-		var w = quat.w;
-		var x2 = x + x;
-		var y2 = y + y;
-		var z2 = z + z;
-		var xx = x * x2;
-		var xy = x * y2;
-		var xz = x * z2;
-		var yy = y * y2;
-		var yz = y * z2;
-		var zz = z * z2;
-		var wx = w * x2;
-		var wy = w * y2;
-		var wz = w * z2;
-		this.self._00 = 1.0 - (yy + zz);
-		this.self._10 = xy - wz;
-		this.self._20 = xz + wy;
-		this.self._01 = xy + wz;
-		this.self._11 = 1.0 - (xx + zz);
-		this.self._21 = yz - wx;
-		this.self._02 = xz - wy;
-		this.self._12 = yz + wx;
-		this.self._22 = 1.0 - (xx + yy);
-		this.self._03 = 0.0;
-		this.self._13 = 0.0;
-		this.self._23 = 0.0;
-		this.self._30 = 0.0;
-		this.self._31 = 0.0;
-		this.self._32 = 0.0;
-		this.self._33 = 1.0;
-		var x1 = sc.x;
-		var y1 = sc.y;
-		var z1 = sc.z;
-		this.self._00 *= x1;
-		this.self._01 *= x1;
-		this.self._02 *= x1;
-		this.self._03 *= x1;
-		this.self._10 *= y1;
-		this.self._11 *= y1;
-		this.self._12 *= y1;
-		this.self._13 *= y1;
-		this.self._20 *= z1;
-		this.self._21 *= z1;
-		this.self._22 *= z1;
-		this.self._23 *= z1;
-		this.self._30 = loc.x;
-		this.self._31 = loc.y;
-		this.self._32 = loc.z;
-		return this;
-	}
-	,decompose: function(loc,quat,scale) {
-		loc.x = this.self._30;
-		loc.y = this.self._31;
-		loc.z = this.self._32;
-		var _this = iron_math_Mat4.helpVec;
-		_this.x = this.self._00;
-		_this.y = this.self._01;
-		_this.z = this.self._02;
-		_this.w = 1.0;
+$hxClasses["iron.math.Ray"] = iron_math_Ray;
+iron_math_Ray.__name__ = "iron.math.Ray";
+iron_math_Ray.prototype = {
+	origin: null
+	,direction: null
+	,at: function(t) {
+		var result = new iron_math_Vec4();
+		var v = this.direction;
+		result.x = v.x;
+		result.y = v.y;
+		result.z = v.z;
+		result.w = v.w;
+		var _this = result;
+		_this.x *= t;
+		_this.y *= t;
+		_this.z *= t;
 		var _this1 = _this;
-		scale.x = Math.sqrt(_this1.x * _this1.x + _this1.y * _this1.y + _this1.z * _this1.z);
-		var _this2 = iron_math_Mat4.helpVec;
-		_this2.x = this.self._10;
-		_this2.y = this.self._11;
-		_this2.z = this.self._12;
-		_this2.w = 1.0;
-		var _this3 = _this2;
-		scale.y = Math.sqrt(_this3.x * _this3.x + _this3.y * _this3.y + _this3.z * _this3.z);
-		var _this4 = iron_math_Mat4.helpVec;
-		_this4.x = this.self._20;
-		_this4.y = this.self._21;
-		_this4.z = this.self._22;
-		_this4.w = 1.0;
-		var _this5 = _this4;
-		scale.z = Math.sqrt(_this5.x * _this5.x + _this5.y * _this5.y + _this5.z * _this5.z);
-		var _this6 = this.self;
-		var m3 = _this6._12;
-		var m4 = _this6._22;
-		var m5 = _this6._32;
-		var m6 = _this6._13;
-		var m7 = _this6._23;
-		var m8 = _this6._33;
-		var c00 = _this6._11 * (m4 * m8 - m5 * m7) - _this6._21 * (m3 * m8 - m5 * m6) + _this6._31 * (m3 * m7 - m4 * m6);
-		var m31 = _this6._12;
-		var m41 = _this6._22;
-		var m51 = _this6._32;
-		var m61 = _this6._13;
-		var m71 = _this6._23;
-		var m81 = _this6._33;
-		var c01 = _this6._10 * (m41 * m81 - m51 * m71) - _this6._20 * (m31 * m81 - m51 * m61) + _this6._30 * (m31 * m71 - m41 * m61);
-		var m32 = _this6._11;
-		var m42 = _this6._21;
-		var m52 = _this6._31;
-		var m62 = _this6._13;
-		var m72 = _this6._23;
-		var m82 = _this6._33;
-		var c02 = _this6._10 * (m42 * m82 - m52 * m72) - _this6._20 * (m32 * m82 - m52 * m62) + _this6._30 * (m32 * m72 - m42 * m62);
-		var m33 = _this6._11;
-		var m43 = _this6._21;
-		var m53 = _this6._31;
-		var m63 = _this6._12;
-		var m73 = _this6._22;
-		var m83 = _this6._32;
-		var c03 = _this6._10 * (m43 * m83 - m53 * m73) - _this6._20 * (m33 * m83 - m53 * m63) + _this6._30 * (m33 * m73 - m43 * m63);
-		if(_this6._00 * c00 - _this6._01 * c01 + _this6._02 * c02 - _this6._03 * c03 < 0.0) {
-			scale.x = -scale.x;
+		var v1 = this.origin;
+		_this1.x += v1.x;
+		_this1.y += v1.y;
+		_this1.z += v1.z;
+		return _this1;
+	}
+	,distanceToPoint: function(point) {
+		var _this_x = 0.0;
+		var _this_y = 0.0;
+		var _this_z = 0.0;
+		var _this_w = 1.0;
+		var b = this.origin;
+		_this_x = point.x - b.x;
+		_this_y = point.y - b.y;
+		_this_z = point.z - b.z;
+		var v = this.direction;
+		var directionDistance = _this_x * v.x + _this_y * v.y + _this_z * v.z;
+		if(directionDistance < 0) {
+			var _this = this.origin;
+			return Math.sqrt((point.x - _this.x) * (point.x - _this.x) + (point.y - _this.y) * (point.y - _this.y) + (point.z - _this.z) * (point.z - _this.z));
 		}
-		var invs = 1.0 / scale.x;
-		iron_math_Mat4.helpMat.self._00 = this.self._00 * invs;
-		iron_math_Mat4.helpMat.self._01 = this.self._01 * invs;
-		iron_math_Mat4.helpMat.self._02 = this.self._02 * invs;
-		invs = 1.0 / scale.y;
-		iron_math_Mat4.helpMat.self._10 = this.self._10 * invs;
-		iron_math_Mat4.helpMat.self._11 = this.self._11 * invs;
-		iron_math_Mat4.helpMat.self._12 = this.self._12 * invs;
-		invs = 1.0 / scale.z;
-		iron_math_Mat4.helpMat.self._20 = this.self._20 * invs;
-		iron_math_Mat4.helpMat.self._21 = this.self._21 * invs;
-		iron_math_Mat4.helpMat.self._22 = this.self._22 * invs;
-		var m = iron_math_Mat4.helpMat;
-		var m11 = m.self._00;
-		var m12 = m.self._10;
-		var m13 = m.self._20;
-		var m21 = m.self._01;
-		var m22 = m.self._11;
-		var m23 = m.self._21;
-		var m311 = m.self._02;
-		var m321 = m.self._12;
-		var m331 = m.self._22;
-		var tr = m11 + m22 + m331;
-		var s = 0.0;
-		if(tr > 0) {
-			s = 0.5 / Math.sqrt(tr + 1.0);
-			quat.w = 0.25 / s;
-			quat.x = (m321 - m23) * s;
-			quat.y = (m13 - m311) * s;
-			quat.z = (m21 - m12) * s;
-		} else if(m11 > m22 && m11 > m331) {
-			s = 2.0 * Math.sqrt(1.0 + m11 - m22 - m331);
-			quat.w = (m321 - m23) / s;
-			quat.x = 0.25 * s;
-			quat.y = (m12 + m21) / s;
-			quat.z = (m13 + m311) / s;
-		} else if(m22 > m331) {
-			s = 2.0 * Math.sqrt(1.0 + m22 - m11 - m331);
-			quat.w = (m13 - m311) / s;
-			quat.x = (m12 + m21) / s;
-			quat.y = 0.25 * s;
-			quat.z = (m23 + m321) / s;
+		var v1 = this.direction;
+		_this_x = v1.x;
+		_this_y = v1.y;
+		_this_z = v1.z;
+		_this_w = v1.w;
+		_this_x *= directionDistance;
+		_this_y *= directionDistance;
+		_this_z *= directionDistance;
+		var v2 = this.origin;
+		_this_x += v2.x;
+		_this_y += v2.y;
+		_this_z += v2.z;
+		return Math.sqrt((point.x - _this_x) * (point.x - _this_x) + (point.y - _this_y) * (point.y - _this_y) + (point.z - _this_z) * (point.z - _this_z));
+	}
+	,intersectsSphere: function(sphereCenter,sphereRadius) {
+		return this.distanceToPoint(sphereCenter) <= sphereRadius;
+	}
+	,intersectsPlane: function(plane) {
+		var distToPoint = plane.distanceToPoint(this.origin);
+		if(distToPoint == 0) {
+			return true;
+		}
+		var _this = plane.normal;
+		var v = this.direction;
+		var denominator = _this.x * v.x + _this.y * v.y + _this.z * v.z;
+		if(denominator * distToPoint < 0) {
+			return true;
+		}
+		return false;
+	}
+	,distanceToPlane: function(plane) {
+		var _this = plane.normal;
+		var v = this.direction;
+		var denominator = _this.x * v.x + _this.y * v.y + _this.z * v.z;
+		if(denominator == 0) {
+			if(plane.distanceToPoint(this.origin) == 0) {
+				return 0;
+			}
+			return -1;
+		}
+		var _this1 = this.origin;
+		var v1 = plane.normal;
+		var t = -(_this1.x * v1.x + _this1.y * v1.y + _this1.z * v1.z + plane.constant) / denominator;
+		if(t >= 0) {
+			return t;
 		} else {
-			s = 2.0 * Math.sqrt(1.0 + m331 - m11 - m22);
-			quat.w = (m21 - m12) / s;
-			quat.x = (m13 + m311) / s;
-			quat.y = (m23 + m321) / s;
-			quat.z = 0.25 * s;
+			return -1;
 		}
+	}
+	,intersectPlane: function(plane) {
+		var t = this.distanceToPlane(plane);
+		if(t == -1) {
+			return null;
+		}
+		return this.at(t);
+	}
+	,intersectsBox: function(center,dim) {
+		return this.intersectBox(center,dim) != null;
+	}
+	,intersectBox: function(center,dim) {
+		var tmin;
+		var tmax;
+		var tymin;
+		var tymax;
+		var tzmin;
+		var tzmax;
+		var halfX = dim.x / 2;
+		var halfY = dim.y / 2;
+		var halfZ = dim.z / 2;
+		var boxMinX = center.x - halfX;
+		var boxMinY = center.y - halfY;
+		var boxMinZ = center.z - halfZ;
+		var boxMaxX = center.x + halfX;
+		var boxMaxY = center.y + halfY;
+		var boxMaxZ = center.z + halfZ;
+		var invdirx = 1 / this.direction.x;
+		var invdiry = 1 / this.direction.y;
+		var invdirz = 1 / this.direction.z;
+		var origin = this.origin;
+		if(invdirx >= 0) {
+			tmin = (boxMinX - origin.x) * invdirx;
+			tmax = (boxMaxX - origin.x) * invdirx;
+		} else {
+			tmin = (boxMaxX - origin.x) * invdirx;
+			tmax = (boxMinX - origin.x) * invdirx;
+		}
+		if(invdiry >= 0) {
+			tymin = (boxMinY - origin.y) * invdiry;
+			tymax = (boxMaxY - origin.y) * invdiry;
+		} else {
+			tymin = (boxMaxY - origin.y) * invdiry;
+			tymax = (boxMinY - origin.y) * invdiry;
+		}
+		if(tmin > tymax || tymin > tmax) {
+			return null;
+		}
+		if(tymin > tmin || tmin != tmin) {
+			tmin = tymin;
+		}
+		if(tymax < tmax || tmax != tmax) {
+			tmax = tymax;
+		}
+		if(invdirz >= 0) {
+			tzmin = (boxMinZ - origin.z) * invdirz;
+			tzmax = (boxMaxZ - origin.z) * invdirz;
+		} else {
+			tzmin = (boxMaxZ - origin.z) * invdirz;
+			tzmax = (boxMinZ - origin.z) * invdirz;
+		}
+		if(tmin > tzmax || tzmin > tmax) {
+			return null;
+		}
+		if(tzmin > tmin || tmin != tmin) {
+			tmin = tzmin;
+		}
+		if(tzmax < tmax || tmax != tmax) {
+			tmax = tzmax;
+		}
+		if(tmax < 0) {
+			return null;
+		}
+		return this.at(tmin >= 0 ? tmin : tmax);
+	}
+	,intersectTriangle: function(a,b,c,backfaceCulling) {
+		var diff_x = 0.0;
+		var diff_y = 0.0;
+		var diff_z = 0.0;
+		var diff_w = 1.0;
+		var v_x = 0.0;
+		var v_y = 0.0;
+		var v_z = 0.0;
+		var v_w = 1.0;
+		var v_x1 = 0.0;
+		var v_y1 = 0.0;
+		var v_z1 = 0.0;
+		var v_w1 = 1.0;
+		var normal_x = 0.0;
+		var normal_y = 0.0;
+		var normal_z = 0.0;
+		var normal_w = 1.0;
+		v_x = b.x - a.x;
+		v_y = b.y - a.y;
+		v_z = b.z - a.z;
+		v_x1 = c.x - a.x;
+		v_y1 = c.y - a.y;
+		v_z1 = c.z - a.z;
+		var ax = v_x;
+		var ay = v_y;
+		var az = v_z;
+		var bx = v_x1;
+		var by = v_y1;
+		var bz = v_z1;
+		normal_x = ay * bz - az * by;
+		normal_y = az * bx - ax * bz;
+		normal_z = ax * by - ay * bx;
+		var _this = this.direction;
+		var DdN = _this.x * normal_x + _this.y * normal_y + _this.z * normal_z;
+		var sign;
+		if(DdN > 0) {
+			if(backfaceCulling) {
+				return null;
+			}
+			sign = 1;
+		} else if(DdN < 0) {
+			sign = -1;
+			DdN = -DdN;
+		} else {
+			return null;
+		}
+		var a1 = this.origin;
+		diff_x = a1.x - a.x;
+		diff_y = a1.y - a.y;
+		diff_z = a1.z - a.z;
+		var _this1 = this.direction;
+		var ax1 = diff_x;
+		var ay1 = diff_y;
+		var az1 = diff_z;
+		var bx1 = v_x1;
+		var by1 = v_y1;
+		var bz1 = v_z1;
+		v_x1 = ay1 * bz1 - az1 * by1;
+		v_y1 = az1 * bx1 - ax1 * bz1;
+		v_z1 = ax1 * by1 - ay1 * bx1;
+		var DdQxE2 = sign * (_this1.x * v_x1 + _this1.y * v_y1 + _this1.z * v_z1);
+		if(DdQxE2 < 0) {
+			return null;
+		}
+		var _this2 = this.direction;
+		var ax2 = v_x;
+		var ay2 = v_y;
+		var az2 = v_z;
+		var vx = diff_x;
+		var vy = diff_y;
+		var vz = diff_z;
+		v_x = ay2 * vz - az2 * vy;
+		v_y = az2 * vx - ax2 * vz;
+		v_z = ax2 * vy - ay2 * vx;
+		var DdE1xQ = sign * (_this2.x * v_x + _this2.y * v_y + _this2.z * v_z);
+		if(DdE1xQ < 0) {
+			return null;
+		}
+		if(DdQxE2 + DdE1xQ > DdN) {
+			return null;
+		}
+		var QdN = -sign * (diff_x * normal_x + diff_y * normal_y + diff_z * normal_z);
+		if(QdN < 0) {
+			return null;
+		}
+		return this.at(QdN / DdN);
+	}
+	,__class__: iron_math_Ray
+};
+var iron_math_Plane = function() {
+	this.constant = 0.0;
+	this.normal = new iron_math_Vec4(1.0,0.0,0.0);
+};
+$hxClasses["iron.math.Plane"] = iron_math_Plane;
+iron_math_Plane.__name__ = "iron.math.Plane";
+iron_math_Plane.prototype = {
+	normal: null
+	,constant: null
+	,distanceToPoint: function(point) {
+		var _this = this.normal;
+		return _this.x * point.x + _this.y * point.y + _this.z * point.z + this.constant;
+	}
+	,set: function(normal,point) {
+		var _this = this.normal;
+		_this.x = normal.x;
+		_this.y = normal.y;
+		_this.z = normal.z;
+		_this.w = normal.w;
+		var v = this.normal;
+		this.constant = -(point.x * v.x + point.y * v.y + point.z * v.z);
 		return this;
 	}
-	,setLoc: function(v) {
-		this.self._30 = v.x;
-		this.self._31 = v.y;
-		this.self._32 = v.z;
-		return this;
+	,__class__: iron_math_Plane
+};
+var iron_math_RayCaster = function() { };
+$hxClasses["iron.math.RayCaster"] = iron_math_RayCaster;
+iron_math_RayCaster.__name__ = "iron.math.RayCaster";
+iron_math_RayCaster.getRay = function(inputX,inputY,camera) {
+	var start = new iron_math_Vec4();
+	var end = new iron_math_Vec4();
+	iron_math_RayCaster.getDirection(start,end,inputX,inputY,camera);
+	end.x -= start.x;
+	end.y -= start.y;
+	end.z -= start.z;
+	var n = Math.sqrt(end.x * end.x + end.y * end.y + end.z * end.z);
+	if(n > 0.0) {
+		var invN = 1.0 / n;
+		end.x *= invN;
+		end.y *= invN;
+		end.z *= invN;
 	}
-	,fromQuat: function(q) {
-		var x = q.x;
-		var y = q.y;
-		var z = q.z;
-		var w = q.w;
-		var x2 = x + x;
-		var y2 = y + y;
-		var z2 = z + z;
-		var xx = x * x2;
-		var xy = x * y2;
-		var xz = x * z2;
-		var yy = y * y2;
-		var yz = y * z2;
-		var zz = z * z2;
-		var wx = w * x2;
-		var wy = w * y2;
-		var wz = w * z2;
-		this.self._00 = 1.0 - (yy + zz);
-		this.self._10 = xy - wz;
-		this.self._20 = xz + wy;
-		this.self._01 = xy + wz;
-		this.self._11 = 1.0 - (xx + zz);
-		this.self._21 = yz - wx;
-		this.self._02 = xz - wy;
-		this.self._12 = yz + wx;
-		this.self._22 = 1.0 - (xx + yy);
-		this.self._03 = 0.0;
-		this.self._13 = 0.0;
-		this.self._23 = 0.0;
-		this.self._30 = 0.0;
-		this.self._31 = 0.0;
-		this.self._32 = 0.0;
-		this.self._33 = 1.0;
-		return this;
+	end.x *= camera.data.raw.far_plane;
+	end.y *= camera.data.raw.far_plane;
+	end.z *= camera.data.raw.far_plane;
+	return new iron_math_Ray(start,end);
+};
+iron_math_RayCaster.getDirection = function(start,end,inputX,inputY,camera) {
+	start.x = inputX / kha_System.windowWidth() * 2.0 - 1.0;
+	start.y = -(inputY / kha_System.windowHeight() * 2.0 - 1.0);
+	start.z = -1.0;
+	end.x = start.x;
+	end.y = start.y;
+	end.z = 1.0;
+	var _this = iron_math_RayCaster.PInv;
+	var m = camera.P;
+	var a00 = m.self._00;
+	var a01 = m.self._01;
+	var a02 = m.self._02;
+	var a03 = m.self._03;
+	var a10 = m.self._10;
+	var a11 = m.self._11;
+	var a12 = m.self._12;
+	var a13 = m.self._13;
+	var a20 = m.self._20;
+	var a21 = m.self._21;
+	var a22 = m.self._22;
+	var a23 = m.self._23;
+	var a30 = m.self._30;
+	var a31 = m.self._31;
+	var a32 = m.self._32;
+	var a33 = m.self._33;
+	var b00 = a00 * a11 - a01 * a10;
+	var b01 = a00 * a12 - a02 * a10;
+	var b02 = a00 * a13 - a03 * a10;
+	var b03 = a01 * a12 - a02 * a11;
+	var b04 = a01 * a13 - a03 * a11;
+	var b05 = a02 * a13 - a03 * a12;
+	var b06 = a20 * a31 - a21 * a30;
+	var b07 = a20 * a32 - a22 * a30;
+	var b08 = a20 * a33 - a23 * a30;
+	var b09 = a21 * a32 - a22 * a31;
+	var b10 = a21 * a33 - a23 * a31;
+	var b11 = a22 * a33 - a23 * a32;
+	var det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+	if(det == 0.0) {
+		_this.self._00 = 1.0;
+		_this.self._01 = 0.0;
+		_this.self._02 = 0.0;
+		_this.self._03 = 0.0;
+		_this.self._10 = 0.0;
+		_this.self._11 = 1.0;
+		_this.self._12 = 0.0;
+		_this.self._13 = 0.0;
+		_this.self._20 = 0.0;
+		_this.self._21 = 0.0;
+		_this.self._22 = 1.0;
+		_this.self._23 = 0.0;
+		_this.self._30 = 0.0;
+		_this.self._31 = 0.0;
+		_this.self._32 = 0.0;
+		_this.self._33 = 1.0;
+	} else {
+		det = 1.0 / det;
+		_this.self._00 = (a11 * b11 - a12 * b10 + a13 * b09) * det;
+		_this.self._01 = (a02 * b10 - a01 * b11 - a03 * b09) * det;
+		_this.self._02 = (a31 * b05 - a32 * b04 + a33 * b03) * det;
+		_this.self._03 = (a22 * b04 - a21 * b05 - a23 * b03) * det;
+		_this.self._10 = (a12 * b08 - a10 * b11 - a13 * b07) * det;
+		_this.self._11 = (a00 * b11 - a02 * b08 + a03 * b07) * det;
+		_this.self._12 = (a32 * b02 - a30 * b05 - a33 * b01) * det;
+		_this.self._13 = (a20 * b05 - a22 * b02 + a23 * b01) * det;
+		_this.self._20 = (a10 * b10 - a11 * b08 + a13 * b06) * det;
+		_this.self._21 = (a01 * b08 - a00 * b10 - a03 * b06) * det;
+		_this.self._22 = (a30 * b04 - a31 * b02 + a33 * b00) * det;
+		_this.self._23 = (a21 * b02 - a20 * b04 - a23 * b00) * det;
+		_this.self._30 = (a11 * b07 - a10 * b09 - a12 * b06) * det;
+		_this.self._31 = (a00 * b09 - a01 * b07 + a02 * b06) * det;
+		_this.self._32 = (a31 * b01 - a30 * b03 - a32 * b00) * det;
+		_this.self._33 = (a20 * b03 - a21 * b01 + a22 * b00) * det;
 	}
-	,setIdentity: function() {
-		this.self._00 = 1.0;
-		this.self._01 = 0.0;
-		this.self._02 = 0.0;
-		this.self._03 = 0.0;
-		this.self._10 = 0.0;
-		this.self._11 = 1.0;
-		this.self._12 = 0.0;
-		this.self._13 = 0.0;
-		this.self._20 = 0.0;
-		this.self._21 = 0.0;
-		this.self._22 = 1.0;
-		this.self._23 = 0.0;
-		this.self._30 = 0.0;
-		this.self._31 = 0.0;
-		this.self._32 = 0.0;
-		this.self._33 = 1.0;
-		return this;
+	var _this1 = iron_math_RayCaster.VInv;
+	var m1 = camera.V;
+	var a001 = m1.self._00;
+	var a011 = m1.self._01;
+	var a021 = m1.self._02;
+	var a031 = m1.self._03;
+	var a101 = m1.self._10;
+	var a111 = m1.self._11;
+	var a121 = m1.self._12;
+	var a131 = m1.self._13;
+	var a201 = m1.self._20;
+	var a211 = m1.self._21;
+	var a221 = m1.self._22;
+	var a231 = m1.self._23;
+	var a301 = m1.self._30;
+	var a311 = m1.self._31;
+	var a321 = m1.self._32;
+	var a331 = m1.self._33;
+	var b001 = a001 * a111 - a011 * a101;
+	var b011 = a001 * a121 - a021 * a101;
+	var b021 = a001 * a131 - a031 * a101;
+	var b031 = a011 * a121 - a021 * a111;
+	var b041 = a011 * a131 - a031 * a111;
+	var b051 = a021 * a131 - a031 * a121;
+	var b061 = a201 * a311 - a211 * a301;
+	var b071 = a201 * a321 - a221 * a301;
+	var b081 = a201 * a331 - a231 * a301;
+	var b091 = a211 * a321 - a221 * a311;
+	var b101 = a211 * a331 - a231 * a311;
+	var b111 = a221 * a331 - a231 * a321;
+	var det1 = b001 * b111 - b011 * b101 + b021 * b091 + b031 * b081 - b041 * b071 + b051 * b061;
+	if(det1 == 0.0) {
+		_this1.self._00 = 1.0;
+		_this1.self._01 = 0.0;
+		_this1.self._02 = 0.0;
+		_this1.self._03 = 0.0;
+		_this1.self._10 = 0.0;
+		_this1.self._11 = 1.0;
+		_this1.self._12 = 0.0;
+		_this1.self._13 = 0.0;
+		_this1.self._20 = 0.0;
+		_this1.self._21 = 0.0;
+		_this1.self._22 = 1.0;
+		_this1.self._23 = 0.0;
+		_this1.self._30 = 0.0;
+		_this1.self._31 = 0.0;
+		_this1.self._32 = 0.0;
+		_this1.self._33 = 1.0;
+	} else {
+		det1 = 1.0 / det1;
+		_this1.self._00 = (a111 * b111 - a121 * b101 + a131 * b091) * det1;
+		_this1.self._01 = (a021 * b101 - a011 * b111 - a031 * b091) * det1;
+		_this1.self._02 = (a311 * b051 - a321 * b041 + a331 * b031) * det1;
+		_this1.self._03 = (a221 * b041 - a211 * b051 - a231 * b031) * det1;
+		_this1.self._10 = (a121 * b081 - a101 * b111 - a131 * b071) * det1;
+		_this1.self._11 = (a001 * b111 - a021 * b081 + a031 * b071) * det1;
+		_this1.self._12 = (a321 * b021 - a301 * b051 - a331 * b011) * det1;
+		_this1.self._13 = (a201 * b051 - a221 * b021 + a231 * b011) * det1;
+		_this1.self._20 = (a101 * b101 - a111 * b081 + a131 * b061) * det1;
+		_this1.self._21 = (a011 * b081 - a001 * b101 - a031 * b061) * det1;
+		_this1.self._22 = (a301 * b041 - a311 * b021 + a331 * b001) * det1;
+		_this1.self._23 = (a211 * b021 - a201 * b041 - a231 * b001) * det1;
+		_this1.self._30 = (a111 * b071 - a101 * b091 - a121 * b061) * det1;
+		_this1.self._31 = (a001 * b091 - a011 * b071 + a021 * b061) * det1;
+		_this1.self._32 = (a311 * b011 - a301 * b031 - a321 * b001) * det1;
+		_this1.self._33 = (a201 * b031 - a211 * b011 + a221 * b001) * det1;
 	}
-	,initTranslate: function(x,y,z) {
+	var _this2 = iron_math_RayCaster.VPInv;
+	var b = iron_math_RayCaster.VInv;
+	var a = iron_math_RayCaster.PInv;
+	var a002 = a.self._00;
+	var a012 = a.self._01;
+	var a022 = a.self._02;
+	var a032 = a.self._03;
+	var a102 = a.self._10;
+	var a112 = a.self._11;
+	var a122 = a.self._12;
+	var a132 = a.self._13;
+	var a202 = a.self._20;
+	var a212 = a.self._21;
+	var a222 = a.self._22;
+	var a232 = a.self._23;
+	var a302 = a.self._30;
+	var a312 = a.self._31;
+	var a322 = a.self._32;
+	var a332 = a.self._33;
+	var b0 = b.self._00;
+	var b1 = b.self._10;
+	var b2 = b.self._20;
+	var b3 = b.self._30;
+	_this2.self._00 = a002 * b0 + a012 * b1 + a022 * b2 + a032 * b3;
+	_this2.self._10 = a102 * b0 + a112 * b1 + a122 * b2 + a132 * b3;
+	_this2.self._20 = a202 * b0 + a212 * b1 + a222 * b2 + a232 * b3;
+	_this2.self._30 = a302 * b0 + a312 * b1 + a322 * b2 + a332 * b3;
+	b0 = b.self._01;
+	b1 = b.self._11;
+	b2 = b.self._21;
+	b3 = b.self._31;
+	_this2.self._01 = a002 * b0 + a012 * b1 + a022 * b2 + a032 * b3;
+	_this2.self._11 = a102 * b0 + a112 * b1 + a122 * b2 + a132 * b3;
+	_this2.self._21 = a202 * b0 + a212 * b1 + a222 * b2 + a232 * b3;
+	_this2.self._31 = a302 * b0 + a312 * b1 + a322 * b2 + a332 * b3;
+	b0 = b.self._02;
+	b1 = b.self._12;
+	b2 = b.self._22;
+	b3 = b.self._32;
+	_this2.self._02 = a002 * b0 + a012 * b1 + a022 * b2 + a032 * b3;
+	_this2.self._12 = a102 * b0 + a112 * b1 + a122 * b2 + a132 * b3;
+	_this2.self._22 = a202 * b0 + a212 * b1 + a222 * b2 + a232 * b3;
+	_this2.self._32 = a302 * b0 + a312 * b1 + a322 * b2 + a332 * b3;
+	b0 = b.self._03;
+	b1 = b.self._13;
+	b2 = b.self._23;
+	b3 = b.self._33;
+	_this2.self._03 = a002 * b0 + a012 * b1 + a022 * b2 + a032 * b3;
+	_this2.self._13 = a102 * b0 + a112 * b1 + a122 * b2 + a132 * b3;
+	_this2.self._23 = a202 * b0 + a212 * b1 + a222 * b2 + a232 * b3;
+	_this2.self._33 = a302 * b0 + a312 * b1 + a322 * b2 + a332 * b3;
+	var m2 = iron_math_RayCaster.VPInv;
+	var x = start.x;
+	var y = start.y;
+	var z = start.z;
+	var d = 1.0 / (m2.self._03 * x + m2.self._13 * y + m2.self._23 * z + m2.self._33);
+	start.x = (m2.self._00 * x + m2.self._10 * y + m2.self._20 * z + m2.self._30) * d;
+	start.y = (m2.self._01 * x + m2.self._11 * y + m2.self._21 * z + m2.self._31) * d;
+	start.z = (m2.self._02 * x + m2.self._12 * y + m2.self._22 * z + m2.self._32) * d;
+	var m3 = iron_math_RayCaster.VPInv;
+	var x1 = end.x;
+	var y1 = end.y;
+	var z1 = end.z;
+	var d1 = 1.0 / (m3.self._03 * x1 + m3.self._13 * y1 + m3.self._23 * z1 + m3.self._33);
+	end.x = (m3.self._00 * x1 + m3.self._10 * y1 + m3.self._20 * z1 + m3.self._30) * d1;
+	end.y = (m3.self._01 * x1 + m3.self._11 * y1 + m3.self._21 * z1 + m3.self._31) * d1;
+	end.z = (m3.self._02 * x1 + m3.self._12 * y1 + m3.self._22 * z1 + m3.self._32) * d1;
+};
+iron_math_RayCaster.boxIntersect = function(transform,inputX,inputY,camera) {
+	var ray = iron_math_RayCaster.getRay(inputX,inputY,camera);
+	var t = transform;
+	var c = new iron_math_Vec4(t.world.self._30,t.world.self._31,t.world.self._32);
+	var s = new iron_math_Vec4(t.dim.x,t.dim.y,t.dim.z);
+	return ray.intersectBox(c,s);
+};
+iron_math_RayCaster.closestBoxIntersect = function(transforms,inputX,inputY,camera) {
+	var intersects = [];
+	var _g = 0;
+	while(_g < transforms.length) {
+		var t = transforms[_g];
+		++_g;
+		var intersect = iron_math_RayCaster.boxIntersect(t,inputX,inputY,camera);
+		if(intersect != null) {
+			intersects.push(t);
+		}
+	}
+	if(intersects.length == 0) {
+		return null;
+	}
+	var closest = null;
+	var minDist = Infinity;
+	var _g1 = 0;
+	while(_g1 < intersects.length) {
+		var t1 = intersects[_g1];
+		++_g1;
+		var v1 = t1.loc;
+		var v2 = camera.transform.loc;
+		var vx = v1.x - v2.x;
+		var vy = v1.y - v2.y;
+		var vz = v1.z - v2.z;
+		var dist = Math.sqrt(vx * vx + vy * vy + vz * vz);
+		if(dist < minDist) {
+			minDist = dist;
+			closest = t1;
+		}
+	}
+	return closest;
+};
+iron_math_RayCaster.planeIntersect = function(normal,a,inputX,inputY,camera) {
+	var ray = iron_math_RayCaster.getRay(inputX,inputY,camera);
+	var plane = new iron_math_Plane();
+	plane.set(normal,a);
+	return ray.intersectPlane(plane);
+};
+iron_math_RayCaster.getPlaneUV = function(obj,screenX,screenY,camera) {
+	var _this = obj.transform.world;
+	iron_math_RayCaster.nor = new iron_math_Vec4(_this.self._20,_this.self._21,_this.self._22);
+	var _this1 = iron_math_RayCaster.loc;
+	_this1.x = obj.transform.world.self._30;
+	_this1.y = obj.transform.world.self._31;
+	_this1.z = obj.transform.world.self._32;
+	_this1.w = 1.0;
+	var hit = iron_math_RayCaster.planeIntersect(iron_math_RayCaster.nor,iron_math_RayCaster.loc,screenX,screenY,camera);
+	if(hit != null) {
+		var normals = obj.data.geom.normals.values;
+		var _this2 = iron_math_RayCaster.nor;
+		_this2.x = normals[0];
+		_this2.y = normals[1];
+		_this2.z = normals[2];
+		_this2.w = 1.0;
+		var a = iron_math_RayCaster.nor.x;
+		var b = iron_math_RayCaster.nor.y;
+		var c = iron_math_RayCaster.nor.z;
+		var e = 0.0001;
+		var u = a >= e && b >= e ? new iron_math_Vec4(b,-a,0) : new iron_math_Vec4(c,-a,0);
+		var n = Math.sqrt(u.x * u.x + u.y * u.y + u.z * u.z);
+		if(n > 0.0) {
+			var invN = 1.0 / n;
+			u.x *= invN;
+			u.y *= invN;
+			u.z *= invN;
+		}
+		var _this3 = iron_math_RayCaster.nor;
+		var x = _this3.x;
+		var y = _this3.y;
+		var z = _this3.z;
+		var w = _this3.w;
+		if(w == null) {
+			w = 1.0;
+		}
 		if(z == null) {
 			z = 0.0;
 		}
@@ -10257,223 +13051,55 @@ iron_math_Mat4.prototype = {
 		if(x == null) {
 			x = 0.0;
 		}
-		this.self._00 = 1.0;
-		this.self._01 = 0.0;
-		this.self._02 = 0.0;
-		this.self._03 = 0.0;
-		this.self._10 = 0.0;
-		this.self._11 = 1.0;
-		this.self._12 = 0.0;
-		this.self._13 = 0.0;
-		this.self._20 = 0.0;
-		this.self._21 = 0.0;
-		this.self._22 = 1.0;
-		this.self._23 = 0.0;
-		this.self._30 = x;
-		this.self._31 = y;
-		this.self._32 = z;
-		this.self._33 = 1.0;
-		return this;
-	}
-	,translate: function(x,y,z) {
-		this.self._00 += x * this.self._03;
-		this.self._01 += y * this.self._03;
-		this.self._02 += z * this.self._03;
-		this.self._10 += x * this.self._13;
-		this.self._11 += y * this.self._13;
-		this.self._12 += z * this.self._13;
-		this.self._20 += x * this.self._23;
-		this.self._21 += y * this.self._23;
-		this.self._22 += z * this.self._23;
-		this.self._30 += x * this.self._33;
-		this.self._31 += y * this.self._33;
-		this.self._32 += z * this.self._33;
-		return this;
-	}
-	,scale: function(v) {
-		var x = v.x;
-		var y = v.y;
-		var z = v.z;
-		this.self._00 *= x;
-		this.self._01 *= x;
-		this.self._02 *= x;
-		this.self._03 *= x;
-		this.self._10 *= y;
-		this.self._11 *= y;
-		this.self._12 *= y;
-		this.self._13 *= y;
-		this.self._20 *= z;
-		this.self._21 *= z;
-		this.self._22 *= z;
-		this.self._23 *= z;
-		return this;
-	}
-	,multmats3x4: function(a,b) {
-		var a00 = a.self._00;
-		var a01 = a.self._01;
-		var a02 = a.self._02;
-		var a03 = a.self._03;
-		var a10 = a.self._10;
-		var a11 = a.self._11;
-		var a12 = a.self._12;
-		var a13 = a.self._13;
-		var a20 = a.self._20;
-		var a21 = a.self._21;
-		var a22 = a.self._22;
-		var a23 = a.self._23;
-		var a30 = a.self._30;
-		var a31 = a.self._31;
-		var a32 = a.self._32;
-		var a33 = a.self._33;
-		var b0 = b.self._00;
-		var b1 = b.self._10;
-		var b2 = b.self._20;
-		var b3 = b.self._30;
-		this.self._00 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._10 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._20 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._30 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		b0 = b.self._01;
-		b1 = b.self._11;
-		b2 = b.self._21;
-		b3 = b.self._31;
-		this.self._01 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._11 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._21 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._31 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		b0 = b.self._02;
-		b1 = b.self._12;
-		b2 = b.self._22;
-		b3 = b.self._32;
-		this.self._02 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._12 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._22 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._32 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		this.self._03 = 0;
-		this.self._13 = 0;
-		this.self._23 = 0;
-		this.self._33 = 1;
-		return this;
-	}
-	,multmats: function(b,a) {
-		var a00 = a.self._00;
-		var a01 = a.self._01;
-		var a02 = a.self._02;
-		var a03 = a.self._03;
-		var a10 = a.self._10;
-		var a11 = a.self._11;
-		var a12 = a.self._12;
-		var a13 = a.self._13;
-		var a20 = a.self._20;
-		var a21 = a.self._21;
-		var a22 = a.self._22;
-		var a23 = a.self._23;
-		var a30 = a.self._30;
-		var a31 = a.self._31;
-		var a32 = a.self._32;
-		var a33 = a.self._33;
-		var b0 = b.self._00;
-		var b1 = b.self._10;
-		var b2 = b.self._20;
-		var b3 = b.self._30;
-		this.self._00 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._10 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._20 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._30 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		b0 = b.self._01;
-		b1 = b.self._11;
-		b2 = b.self._21;
-		b3 = b.self._31;
-		this.self._01 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._11 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._21 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._31 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		b0 = b.self._02;
-		b1 = b.self._12;
-		b2 = b.self._22;
-		b3 = b.self._32;
-		this.self._02 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._12 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._22 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._32 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		b0 = b.self._03;
-		b1 = b.self._13;
-		b2 = b.self._23;
-		b3 = b.self._33;
-		this.self._03 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._13 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._23 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._33 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		return this;
-	}
-	,multmat: function(m) {
-		var a00 = this.self._00;
-		var a01 = this.self._01;
-		var a02 = this.self._02;
-		var a03 = this.self._03;
-		var a10 = this.self._10;
-		var a11 = this.self._11;
-		var a12 = this.self._12;
-		var a13 = this.self._13;
-		var a20 = this.self._20;
-		var a21 = this.self._21;
-		var a22 = this.self._22;
-		var a23 = this.self._23;
-		var a30 = this.self._30;
-		var a31 = this.self._31;
-		var a32 = this.self._32;
-		var a33 = this.self._33;
-		var b0 = m.self._00;
-		var b1 = m.self._10;
-		var b2 = m.self._20;
-		var b3 = m.self._30;
-		this.self._00 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._10 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._20 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._30 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		b0 = m.self._01;
-		b1 = m.self._11;
-		b2 = m.self._21;
-		b3 = m.self._31;
-		this.self._01 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._11 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._21 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._31 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		b0 = m.self._02;
-		b1 = m.self._12;
-		b2 = m.self._22;
-		b3 = m.self._32;
-		this.self._02 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._12 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._22 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._32 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		b0 = m.self._03;
-		b1 = m.self._13;
-		b2 = m.self._23;
-		b3 = m.self._33;
-		this.self._03 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._13 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._23 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._33 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		return this;
-	}
-	,getInverse: function(m) {
-		var a00 = m.self._00;
-		var a01 = m.self._01;
-		var a02 = m.self._02;
-		var a03 = m.self._03;
-		var a10 = m.self._10;
-		var a11 = m.self._11;
-		var a12 = m.self._12;
-		var a13 = m.self._13;
-		var a20 = m.self._20;
-		var a21 = m.self._21;
-		var a22 = m.self._22;
-		var a23 = m.self._23;
-		var a30 = m.self._30;
-		var a31 = m.self._31;
-		var a32 = m.self._32;
-		var a33 = m.self._33;
+		var v_x = x;
+		var v_y = y;
+		var v_z = z;
+		var v_w = w;
+		var ax = v_x;
+		var ay = v_y;
+		var az = v_z;
+		var vx = u.x;
+		var vy = u.y;
+		var vz = u.z;
+		v_x = ay * vz - az * vy;
+		v_y = az * vx - ax * vz;
+		v_z = ax * vy - ay * vx;
+		var _this4 = iron_math_RayCaster.m;
+		var m = obj.transform.world;
+		_this4.self._00 = m.self._00;
+		_this4.self._01 = m.self._01;
+		_this4.self._02 = m.self._02;
+		_this4.self._03 = m.self._03;
+		_this4.self._10 = m.self._10;
+		_this4.self._11 = m.self._11;
+		_this4.self._12 = m.self._12;
+		_this4.self._13 = m.self._13;
+		_this4.self._20 = m.self._20;
+		_this4.self._21 = m.self._21;
+		_this4.self._22 = m.self._22;
+		_this4.self._23 = m.self._23;
+		_this4.self._30 = m.self._30;
+		_this4.self._31 = m.self._31;
+		_this4.self._32 = m.self._32;
+		_this4.self._33 = m.self._33;
+		var _this5 = iron_math_RayCaster.m;
+		var m1 = iron_math_RayCaster.m;
+		var a00 = m1.self._00;
+		var a01 = m1.self._01;
+		var a02 = m1.self._02;
+		var a03 = m1.self._03;
+		var a10 = m1.self._10;
+		var a11 = m1.self._11;
+		var a12 = m1.self._12;
+		var a13 = m1.self._13;
+		var a20 = m1.self._20;
+		var a21 = m1.self._21;
+		var a22 = m1.self._22;
+		var a23 = m1.self._23;
+		var a30 = m1.self._30;
+		var a31 = m1.self._31;
+		var a32 = m1.self._32;
+		var a33 = m1.self._33;
 		var b00 = a00 * a11 - a01 * a10;
 		var b01 = a00 * a12 - a02 * a10;
 		var b02 = a00 * a13 - a03 * a10;
@@ -10488,835 +13114,93 @@ iron_math_Mat4.prototype = {
 		var b11 = a22 * a33 - a23 * a32;
 		var det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
 		if(det == 0.0) {
-			this.self._00 = 1.0;
-			this.self._01 = 0.0;
-			this.self._02 = 0.0;
-			this.self._03 = 0.0;
-			this.self._10 = 0.0;
-			this.self._11 = 1.0;
-			this.self._12 = 0.0;
-			this.self._13 = 0.0;
-			this.self._20 = 0.0;
-			this.self._21 = 0.0;
-			this.self._22 = 1.0;
-			this.self._23 = 0.0;
-			this.self._30 = 0.0;
-			this.self._31 = 0.0;
-			this.self._32 = 0.0;
-			this.self._33 = 1.0;
-			return this;
-		}
-		det = 1.0 / det;
-		this.self._00 = (a11 * b11 - a12 * b10 + a13 * b09) * det;
-		this.self._01 = (a02 * b10 - a01 * b11 - a03 * b09) * det;
-		this.self._02 = (a31 * b05 - a32 * b04 + a33 * b03) * det;
-		this.self._03 = (a22 * b04 - a21 * b05 - a23 * b03) * det;
-		this.self._10 = (a12 * b08 - a10 * b11 - a13 * b07) * det;
-		this.self._11 = (a00 * b11 - a02 * b08 + a03 * b07) * det;
-		this.self._12 = (a32 * b02 - a30 * b05 - a33 * b01) * det;
-		this.self._13 = (a20 * b05 - a22 * b02 + a23 * b01) * det;
-		this.self._20 = (a10 * b10 - a11 * b08 + a13 * b06) * det;
-		this.self._21 = (a01 * b08 - a00 * b10 - a03 * b06) * det;
-		this.self._22 = (a30 * b04 - a31 * b02 + a33 * b00) * det;
-		this.self._23 = (a21 * b02 - a20 * b04 - a23 * b00) * det;
-		this.self._30 = (a11 * b07 - a10 * b09 - a12 * b06) * det;
-		this.self._31 = (a00 * b09 - a01 * b07 + a02 * b06) * det;
-		this.self._32 = (a31 * b01 - a30 * b03 - a32 * b00) * det;
-		this.self._33 = (a20 * b03 - a21 * b01 + a22 * b00) * det;
-		return this;
-	}
-	,transpose: function() {
-		var f = this.self._01;
-		this.self._01 = this.self._10;
-		this.self._10 = f;
-		f = this.self._02;
-		this.self._02 = this.self._20;
-		this.self._20 = f;
-		f = this.self._03;
-		this.self._03 = this.self._30;
-		this.self._30 = f;
-		f = this.self._12;
-		this.self._12 = this.self._21;
-		this.self._21 = f;
-		f = this.self._13;
-		this.self._13 = this.self._31;
-		this.self._31 = f;
-		f = this.self._23;
-		this.self._23 = this.self._32;
-		this.self._32 = f;
-		return this;
-	}
-	,transpose3x3: function() {
-		var f = this.self._01;
-		this.self._01 = this.self._10;
-		this.self._10 = f;
-		f = this.self._02;
-		this.self._02 = this.self._20;
-		this.self._20 = f;
-		f = this.self._12;
-		this.self._12 = this.self._21;
-		this.self._21 = f;
-		return this;
-	}
-	,clone: function() {
-		return new iron_math_Mat4(this.self._00,this.self._10,this.self._20,this.self._30,this.self._01,this.self._11,this.self._21,this.self._31,this.self._02,this.self._12,this.self._22,this.self._32,this.self._03,this.self._13,this.self._23,this.self._33);
-	}
-	,setF32: function(a,offset) {
-		if(offset == null) {
-			offset = 0;
-		}
-		this.self._00 = a[offset];
-		this.self._10 = a[1 + offset];
-		this.self._20 = a[2 + offset];
-		this.self._30 = a[3 + offset];
-		this.self._01 = a[4 + offset];
-		this.self._11 = a[5 + offset];
-		this.self._21 = a[6 + offset];
-		this.self._31 = a[7 + offset];
-		this.self._02 = a[8 + offset];
-		this.self._12 = a[9 + offset];
-		this.self._22 = a[10 + offset];
-		this.self._32 = a[11 + offset];
-		this.self._03 = a[12 + offset];
-		this.self._13 = a[13 + offset];
-		this.self._23 = a[14 + offset];
-		this.self._33 = a[15 + offset];
-		return this;
-	}
-	,setFrom: function(m) {
-		this.self._00 = m.self._00;
-		this.self._01 = m.self._01;
-		this.self._02 = m.self._02;
-		this.self._03 = m.self._03;
-		this.self._10 = m.self._10;
-		this.self._11 = m.self._11;
-		this.self._12 = m.self._12;
-		this.self._13 = m.self._13;
-		this.self._20 = m.self._20;
-		this.self._21 = m.self._21;
-		this.self._22 = m.self._22;
-		this.self._23 = m.self._23;
-		this.self._30 = m.self._30;
-		this.self._31 = m.self._31;
-		this.self._32 = m.self._32;
-		this.self._33 = m.self._33;
-		return this;
-	}
-	,getLoc: function() {
-		return new iron_math_Vec4(this.self._30,this.self._31,this.self._32,this.self._33);
-	}
-	,getScale: function() {
-		return new iron_math_Vec4(Math.sqrt(this.self._00 * this.self._00 + this.self._10 * this.self._10 + this.self._20 * this.self._20),Math.sqrt(this.self._01 * this.self._01 + this.self._11 * this.self._11 + this.self._21 * this.self._21),Math.sqrt(this.self._02 * this.self._02 + this.self._12 * this.self._12 + this.self._22 * this.self._22));
-	}
-	,mult: function(s) {
-		this.self._00 *= s;
-		this.self._10 *= s;
-		this.self._20 *= s;
-		this.self._30 *= s;
-		this.self._01 *= s;
-		this.self._11 *= s;
-		this.self._21 *= s;
-		this.self._31 *= s;
-		this.self._02 *= s;
-		this.self._12 *= s;
-		this.self._22 *= s;
-		this.self._32 *= s;
-		this.self._03 *= s;
-		this.self._13 *= s;
-		this.self._23 *= s;
-		this.self._33 *= s;
-		return this;
-	}
-	,toRotation: function() {
-		var _this = iron_math_Mat4.helpVec;
-		_this.x = this.self._00;
-		_this.y = this.self._01;
-		_this.z = this.self._02;
-		_this.w = 1.0;
-		var _this1 = _this;
-		var scale = 1.0 / Math.sqrt(_this1.x * _this1.x + _this1.y * _this1.y + _this1.z * _this1.z);
-		this.self._00 *= scale;
-		this.self._01 *= scale;
-		this.self._02 *= scale;
-		var _this2 = iron_math_Mat4.helpVec;
-		_this2.x = this.self._10;
-		_this2.y = this.self._11;
-		_this2.z = this.self._12;
-		_this2.w = 1.0;
-		var _this3 = _this2;
-		scale = 1.0 / Math.sqrt(_this3.x * _this3.x + _this3.y * _this3.y + _this3.z * _this3.z);
-		this.self._10 *= scale;
-		this.self._11 *= scale;
-		this.self._12 *= scale;
-		var _this4 = iron_math_Mat4.helpVec;
-		_this4.x = this.self._20;
-		_this4.y = this.self._21;
-		_this4.z = this.self._22;
-		_this4.w = 1.0;
-		var _this5 = _this4;
-		scale = 1.0 / Math.sqrt(_this5.x * _this5.x + _this5.y * _this5.y + _this5.z * _this5.z);
-		this.self._20 *= scale;
-		this.self._21 *= scale;
-		this.self._22 *= scale;
-		this.self._03 = 0.0;
-		this.self._13 = 0.0;
-		this.self._23 = 0.0;
-		this.self._30 = 0.0;
-		this.self._31 = 0.0;
-		this.self._32 = 0.0;
-		this.self._33 = 1.0;
-		return this;
-	}
-	,setLookAt: function(eye,center,up) {
-		var f0 = center.x - eye.x;
-		var f1 = center.y - eye.y;
-		var f2 = center.z - eye.z;
-		var n = 1.0 / Math.sqrt(f0 * f0 + f1 * f1 + f2 * f2);
-		f0 *= n;
-		f1 *= n;
-		f2 *= n;
-		var s0 = f1 * up.z - f2 * up.y;
-		var s1 = f2 * up.x - f0 * up.z;
-		var s2 = f0 * up.y - f1 * up.x;
-		n = 1.0 / Math.sqrt(s0 * s0 + s1 * s1 + s2 * s2);
-		s0 *= n;
-		s1 *= n;
-		s2 *= n;
-		var u0 = s1 * f2 - s2 * f1;
-		var u1 = s2 * f0 - s0 * f2;
-		var u2 = s0 * f1 - s1 * f0;
-		var d0 = -eye.x * s0 - eye.y * s1 - eye.z * s2;
-		var d1 = -eye.x * u0 - eye.y * u1 - eye.z * u2;
-		var d2 = eye.x * f0 + eye.y * f1 + eye.z * f2;
-		this.self._00 = s0;
-		this.self._10 = s1;
-		this.self._20 = s2;
-		this.self._30 = d0;
-		this.self._01 = u0;
-		this.self._11 = u1;
-		this.self._21 = u2;
-		this.self._31 = d1;
-		this.self._02 = -f0;
-		this.self._12 = -f1;
-		this.self._22 = -f2;
-		this.self._32 = d2;
-		this.self._03 = 0.0;
-		this.self._13 = 0.0;
-		this.self._23 = 0.0;
-		this.self._33 = 1.0;
-		return this;
-	}
-	,applyQuat: function(q) {
-		var _this = iron_math_Mat4.helpMat;
-		var x = q.x;
-		var y = q.y;
-		var z = q.z;
-		var w = q.w;
-		var x2 = x + x;
-		var y2 = y + y;
-		var z2 = z + z;
-		var xx = x * x2;
-		var xy = x * y2;
-		var xz = x * z2;
-		var yy = y * y2;
-		var yz = y * z2;
-		var zz = z * z2;
-		var wx = w * x2;
-		var wy = w * y2;
-		var wz = w * z2;
-		_this.self._00 = 1.0 - (yy + zz);
-		_this.self._10 = xy - wz;
-		_this.self._20 = xz + wy;
-		_this.self._01 = xy + wz;
-		_this.self._11 = 1.0 - (xx + zz);
-		_this.self._21 = yz - wx;
-		_this.self._02 = xz - wy;
-		_this.self._12 = yz + wx;
-		_this.self._22 = 1.0 - (xx + yy);
-		_this.self._03 = 0.0;
-		_this.self._13 = 0.0;
-		_this.self._23 = 0.0;
-		_this.self._30 = 0.0;
-		_this.self._31 = 0.0;
-		_this.self._32 = 0.0;
-		_this.self._33 = 1.0;
-		var m = iron_math_Mat4.helpMat;
-		var a00 = this.self._00;
-		var a01 = this.self._01;
-		var a02 = this.self._02;
-		var a03 = this.self._03;
-		var a10 = this.self._10;
-		var a11 = this.self._11;
-		var a12 = this.self._12;
-		var a13 = this.self._13;
-		var a20 = this.self._20;
-		var a21 = this.self._21;
-		var a22 = this.self._22;
-		var a23 = this.self._23;
-		var a30 = this.self._30;
-		var a31 = this.self._31;
-		var a32 = this.self._32;
-		var a33 = this.self._33;
-		var b0 = m.self._00;
-		var b1 = m.self._10;
-		var b2 = m.self._20;
-		var b3 = m.self._30;
-		this.self._00 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._10 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._20 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._30 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		b0 = m.self._01;
-		b1 = m.self._11;
-		b2 = m.self._21;
-		b3 = m.self._31;
-		this.self._01 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._11 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._21 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._31 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		b0 = m.self._02;
-		b1 = m.self._12;
-		b2 = m.self._22;
-		b3 = m.self._32;
-		this.self._02 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._12 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._22 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._32 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-		b0 = m.self._03;
-		b1 = m.self._13;
-		b2 = m.self._23;
-		b3 = m.self._33;
-		this.self._03 = a00 * b0 + a01 * b1 + a02 * b2 + a03 * b3;
-		this.self._13 = a10 * b0 + a11 * b1 + a12 * b2 + a13 * b3;
-		this.self._23 = a20 * b0 + a21 * b1 + a22 * b2 + a23 * b3;
-		this.self._33 = a30 * b0 + a31 * b1 + a32 * b2 + a33 * b3;
-	}
-	,right: function() {
-		return new iron_math_Vec4(this.self._00,this.self._01,this.self._02);
-	}
-	,look: function() {
-		return new iron_math_Vec4(this.self._10,this.self._11,this.self._12);
-	}
-	,up: function() {
-		return new iron_math_Vec4(this.self._20,this.self._21,this.self._22);
-	}
-	,get__00: function() {
-		return this.self._00;
-	}
-	,set__00: function(f) {
-		return this.self._00 = f;
-	}
-	,get__01: function() {
-		return this.self._01;
-	}
-	,set__01: function(f) {
-		return this.self._01 = f;
-	}
-	,get__02: function() {
-		return this.self._02;
-	}
-	,set__02: function(f) {
-		return this.self._02 = f;
-	}
-	,get__03: function() {
-		return this.self._03;
-	}
-	,set__03: function(f) {
-		return this.self._03 = f;
-	}
-	,get__10: function() {
-		return this.self._10;
-	}
-	,set__10: function(f) {
-		return this.self._10 = f;
-	}
-	,get__11: function() {
-		return this.self._11;
-	}
-	,set__11: function(f) {
-		return this.self._11 = f;
-	}
-	,get__12: function() {
-		return this.self._12;
-	}
-	,set__12: function(f) {
-		return this.self._12 = f;
-	}
-	,get__13: function() {
-		return this.self._13;
-	}
-	,set__13: function(f) {
-		return this.self._13 = f;
-	}
-	,get__20: function() {
-		return this.self._20;
-	}
-	,set__20: function(f) {
-		return this.self._20 = f;
-	}
-	,get__21: function() {
-		return this.self._21;
-	}
-	,set__21: function(f) {
-		return this.self._21 = f;
-	}
-	,get__22: function() {
-		return this.self._22;
-	}
-	,set__22: function(f) {
-		return this.self._22 = f;
-	}
-	,get__23: function() {
-		return this.self._23;
-	}
-	,set__23: function(f) {
-		return this.self._23 = f;
-	}
-	,get__30: function() {
-		return this.self._30;
-	}
-	,set__30: function(f) {
-		return this.self._30 = f;
-	}
-	,get__31: function() {
-		return this.self._31;
-	}
-	,set__31: function(f) {
-		return this.self._31 = f;
-	}
-	,get__32: function() {
-		return this.self._32;
-	}
-	,set__32: function(f) {
-		return this.self._32 = f;
-	}
-	,get__33: function() {
-		return this.self._33;
-	}
-	,set__33: function(f) {
-		return this.self._33 = f;
-	}
-	,toString: function() {
-		return "[[" + this.self._00 + ", " + this.self._10 + ", " + this.self._20 + ", " + this.self._30 + "], [" + this.self._01 + ", " + this.self._11 + ", " + this.self._21 + ", " + this.self._31 + "], [" + this.self._02 + ", " + this.self._12 + ", " + this.self._22 + ", " + this.self._32 + "], [" + this.self._03 + ", " + this.self._13 + ", " + this.self._23 + ", " + this.self._33 + "]]";
-	}
-	,__class__: iron_math_Mat4
-	,__properties__: {set__33:"set__33",get__33:"get__33",set__32:"set__32",get__32:"get__32",set__31:"set__31",get__31:"get__31",set__30:"set__30",get__30:"get__30",set__23:"set__23",get__23:"get__23",set__22:"set__22",get__22:"get__22",set__21:"set__21",get__21:"get__21",set__20:"set__20",get__20:"get__20",set__13:"set__13",get__13:"get__13",set__12:"set__12",get__12:"get__12",set__11:"set__11",get__11:"get__11",set__10:"set__10",get__10:"get__10",set__03:"set__03",get__03:"get__03",set__02:"set__02",get__02:"get__02",set__01:"set__01",get__01:"get__01",set__00:"set__00",get__00:"get__00"}
-};
-var iron_math_Quat = function(x,y,z,w) {
-	if(w == null) {
-		w = 1.0;
-	}
-	if(z == null) {
-		z = 0.0;
-	}
-	if(y == null) {
-		y = 0.0;
-	}
-	if(x == null) {
-		x = 0.0;
-	}
-	this.x = x;
-	this.y = y;
-	this.z = z;
-	this.w = w;
-};
-$hxClasses["iron.math.Quat"] = iron_math_Quat;
-iron_math_Quat.__name__ = "iron.math.Quat";
-iron_math_Quat.prototype = {
-	x: null
-	,y: null
-	,z: null
-	,w: null
-	,set: function(x,y,z,w) {
-		this.x = x;
-		this.y = y;
-		this.z = z;
-		this.w = w;
-		return this;
-	}
-	,fromAxisAngle: function(axis,angle) {
-		var s = Math.sin(angle * 0.5);
-		this.x = axis.x * s;
-		this.y = axis.y * s;
-		this.z = axis.z * s;
-		this.w = Math.cos(angle * 0.5);
-		var l = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
-		if(l == 0.0) {
-			this.x = 0;
-			this.y = 0;
-			this.z = 0;
-			this.w = 0;
+			_this5.self._00 = 1.0;
+			_this5.self._01 = 0.0;
+			_this5.self._02 = 0.0;
+			_this5.self._03 = 0.0;
+			_this5.self._10 = 0.0;
+			_this5.self._11 = 1.0;
+			_this5.self._12 = 0.0;
+			_this5.self._13 = 0.0;
+			_this5.self._20 = 0.0;
+			_this5.self._21 = 0.0;
+			_this5.self._22 = 1.0;
+			_this5.self._23 = 0.0;
+			_this5.self._30 = 0.0;
+			_this5.self._31 = 0.0;
+			_this5.self._32 = 0.0;
+			_this5.self._33 = 1.0;
 		} else {
-			l = 1.0 / l;
-			this.x *= l;
-			this.y *= l;
-			this.z *= l;
-			this.w *= l;
+			det = 1.0 / det;
+			_this5.self._00 = (a11 * b11 - a12 * b10 + a13 * b09) * det;
+			_this5.self._01 = (a02 * b10 - a01 * b11 - a03 * b09) * det;
+			_this5.self._02 = (a31 * b05 - a32 * b04 + a33 * b03) * det;
+			_this5.self._03 = (a22 * b04 - a21 * b05 - a23 * b03) * det;
+			_this5.self._10 = (a12 * b08 - a10 * b11 - a13 * b07) * det;
+			_this5.self._11 = (a00 * b11 - a02 * b08 + a03 * b07) * det;
+			_this5.self._12 = (a32 * b02 - a30 * b05 - a33 * b01) * det;
+			_this5.self._13 = (a20 * b05 - a22 * b02 + a23 * b01) * det;
+			_this5.self._20 = (a10 * b10 - a11 * b08 + a13 * b06) * det;
+			_this5.self._21 = (a01 * b08 - a00 * b10 - a03 * b06) * det;
+			_this5.self._22 = (a30 * b04 - a31 * b02 + a33 * b00) * det;
+			_this5.self._23 = (a21 * b02 - a20 * b04 - a23 * b00) * det;
+			_this5.self._30 = (a11 * b07 - a10 * b09 - a12 * b06) * det;
+			_this5.self._31 = (a00 * b09 - a01 * b07 + a02 * b06) * det;
+			_this5.self._32 = (a31 * b01 - a30 * b03 - a32 * b00) * det;
+			_this5.self._33 = (a20 * b03 - a21 * b01 + a22 * b00) * det;
 		}
-		return this;
-	}
-	,toAxisAngle: function(axis) {
-		var l = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
-		if(l == 0.0) {
-			this.x = 0;
-			this.y = 0;
-			this.z = 0;
-			this.w = 0;
-		} else {
-			l = 1.0 / l;
-			this.x *= l;
-			this.y *= l;
-			this.z *= l;
-			this.w *= l;
+		var _this6 = iron_math_RayCaster.m;
+		var f = _this6.self._01;
+		_this6.self._01 = _this6.self._10;
+		_this6.self._10 = f;
+		f = _this6.self._02;
+		_this6.self._02 = _this6.self._20;
+		_this6.self._20 = f;
+		f = _this6.self._12;
+		_this6.self._12 = _this6.self._21;
+		_this6.self._21 = f;
+		iron_math_RayCaster.m.self._30 = iron_math_RayCaster.m.self._31 = iron_math_RayCaster.m.self._32 = 0;
+		var m2 = iron_math_RayCaster.m;
+		var x1 = u.x;
+		var y1 = u.y;
+		var z1 = u.z;
+		u.x = m2.self._00 * x1 + m2.self._10 * y1 + m2.self._20 * z1 + m2.self._30;
+		u.y = m2.self._01 * x1 + m2.self._11 * y1 + m2.self._21 * z1 + m2.self._31;
+		u.z = m2.self._02 * x1 + m2.self._12 * y1 + m2.self._22 * z1 + m2.self._32;
+		var n1 = Math.sqrt(u.x * u.x + u.y * u.y + u.z * u.z);
+		if(n1 > 0.0) {
+			var invN1 = 1.0 / n1;
+			u.x *= invN1;
+			u.y *= invN1;
+			u.z *= invN1;
 		}
-		var angle = 2 * Math.acos(this.w);
-		var s = Math.sqrt(1 - this.w * this.w);
-		if(s < 0.001) {
-			axis.x = this.x;
-			axis.y = this.y;
-			axis.z = this.z;
-		} else {
-			axis.x = this.x / s;
-			axis.y = this.y / s;
-			axis.z = this.z / s;
+		var m3 = iron_math_RayCaster.m;
+		var x2 = v_x;
+		var y2 = v_y;
+		var z2 = v_z;
+		v_x = m3.self._00 * x2 + m3.self._10 * y2 + m3.self._20 * z2 + m3.self._30;
+		v_y = m3.self._01 * x2 + m3.self._11 * y2 + m3.self._21 * z2 + m3.self._31;
+		v_z = m3.self._02 * x2 + m3.self._12 * y2 + m3.self._22 * z2 + m3.self._32;
+		var n2 = Math.sqrt(v_x * v_x + v_y * v_y + v_z * v_z);
+		if(n2 > 0.0) {
+			var invN2 = 1.0 / n2;
+			v_x *= invN2;
+			v_y *= invN2;
+			v_z *= invN2;
 		}
-		return angle;
+		var v = iron_math_RayCaster.loc;
+		hit.x -= v.x;
+		hit.y -= v.y;
+		hit.z -= v.z;
+		var ucoord = u.x * hit.x + u.y * hit.y + u.z * hit.z;
+		var vcoord = v_x * hit.x + v_y * hit.y + v_z * hit.z;
+		var dim = obj.transform.dim;
+		var size = dim.x > dim.y ? dim.x / 2 : dim.y / 2;
+		var ix = ucoord / size * -0.5 + 0.5;
+		var iy = vcoord / size * -0.5 + 0.5;
+		return new iron_math_Vec2(ix,iy);
 	}
-	,fromMat: function(m) {
-		var _this = iron_math_Quat.helpMat;
-		_this.self._00 = m.self._00;
-		_this.self._01 = m.self._01;
-		_this.self._02 = m.self._02;
-		_this.self._03 = m.self._03;
-		_this.self._10 = m.self._10;
-		_this.self._11 = m.self._11;
-		_this.self._12 = m.self._12;
-		_this.self._13 = m.self._13;
-		_this.self._20 = m.self._20;
-		_this.self._21 = m.self._21;
-		_this.self._22 = m.self._22;
-		_this.self._23 = m.self._23;
-		_this.self._30 = m.self._30;
-		_this.self._31 = m.self._31;
-		_this.self._32 = m.self._32;
-		_this.self._33 = m.self._33;
-		var _this1 = iron_math_Quat.helpMat;
-		var _this2 = iron_math_Mat4.helpVec;
-		_this2.x = _this1.self._00;
-		_this2.y = _this1.self._01;
-		_this2.z = _this1.self._02;
-		_this2.w = 1.0;
-		var _this3 = _this2;
-		var scale = 1.0 / Math.sqrt(_this3.x * _this3.x + _this3.y * _this3.y + _this3.z * _this3.z);
-		_this1.self._00 *= scale;
-		_this1.self._01 *= scale;
-		_this1.self._02 *= scale;
-		var _this4 = iron_math_Mat4.helpVec;
-		_this4.x = _this1.self._10;
-		_this4.y = _this1.self._11;
-		_this4.z = _this1.self._12;
-		_this4.w = 1.0;
-		var _this5 = _this4;
-		scale = 1.0 / Math.sqrt(_this5.x * _this5.x + _this5.y * _this5.y + _this5.z * _this5.z);
-		_this1.self._10 *= scale;
-		_this1.self._11 *= scale;
-		_this1.self._12 *= scale;
-		var _this6 = iron_math_Mat4.helpVec;
-		_this6.x = _this1.self._20;
-		_this6.y = _this1.self._21;
-		_this6.z = _this1.self._22;
-		_this6.w = 1.0;
-		var _this7 = _this6;
-		scale = 1.0 / Math.sqrt(_this7.x * _this7.x + _this7.y * _this7.y + _this7.z * _this7.z);
-		_this1.self._20 *= scale;
-		_this1.self._21 *= scale;
-		_this1.self._22 *= scale;
-		_this1.self._03 = 0.0;
-		_this1.self._13 = 0.0;
-		_this1.self._23 = 0.0;
-		_this1.self._30 = 0.0;
-		_this1.self._31 = 0.0;
-		_this1.self._32 = 0.0;
-		_this1.self._33 = 1.0;
-		var m1 = iron_math_Quat.helpMat;
-		var m11 = m1.self._00;
-		var m12 = m1.self._10;
-		var m13 = m1.self._20;
-		var m21 = m1.self._01;
-		var m22 = m1.self._11;
-		var m23 = m1.self._21;
-		var m31 = m1.self._02;
-		var m32 = m1.self._12;
-		var m33 = m1.self._22;
-		var tr = m11 + m22 + m33;
-		var s = 0.0;
-		if(tr > 0) {
-			s = 0.5 / Math.sqrt(tr + 1.0);
-			this.w = 0.25 / s;
-			this.x = (m32 - m23) * s;
-			this.y = (m13 - m31) * s;
-			this.z = (m21 - m12) * s;
-		} else if(m11 > m22 && m11 > m33) {
-			s = 2.0 * Math.sqrt(1.0 + m11 - m22 - m33);
-			this.w = (m32 - m23) / s;
-			this.x = 0.25 * s;
-			this.y = (m12 + m21) / s;
-			this.z = (m13 + m31) / s;
-		} else if(m22 > m33) {
-			s = 2.0 * Math.sqrt(1.0 + m22 - m11 - m33);
-			this.w = (m13 - m31) / s;
-			this.x = (m12 + m21) / s;
-			this.y = 0.25 * s;
-			this.z = (m23 + m32) / s;
-		} else {
-			s = 2.0 * Math.sqrt(1.0 + m33 - m11 - m22);
-			this.w = (m21 - m12) / s;
-			this.x = (m13 + m31) / s;
-			this.y = (m23 + m32) / s;
-			this.z = 0.25 * s;
-		}
-		return this;
-	}
-	,fromRotationMat: function(m) {
-		var m11 = m.self._00;
-		var m12 = m.self._10;
-		var m13 = m.self._20;
-		var m21 = m.self._01;
-		var m22 = m.self._11;
-		var m23 = m.self._21;
-		var m31 = m.self._02;
-		var m32 = m.self._12;
-		var m33 = m.self._22;
-		var tr = m11 + m22 + m33;
-		var s = 0.0;
-		if(tr > 0) {
-			s = 0.5 / Math.sqrt(tr + 1.0);
-			this.w = 0.25 / s;
-			this.x = (m32 - m23) * s;
-			this.y = (m13 - m31) * s;
-			this.z = (m21 - m12) * s;
-		} else if(m11 > m22 && m11 > m33) {
-			s = 2.0 * Math.sqrt(1.0 + m11 - m22 - m33);
-			this.w = (m32 - m23) / s;
-			this.x = 0.25 * s;
-			this.y = (m12 + m21) / s;
-			this.z = (m13 + m31) / s;
-		} else if(m22 > m33) {
-			s = 2.0 * Math.sqrt(1.0 + m22 - m11 - m33);
-			this.w = (m13 - m31) / s;
-			this.x = (m12 + m21) / s;
-			this.y = 0.25 * s;
-			this.z = (m23 + m32) / s;
-		} else {
-			s = 2.0 * Math.sqrt(1.0 + m33 - m11 - m22);
-			this.w = (m21 - m12) / s;
-			this.x = (m13 + m31) / s;
-			this.y = (m23 + m32) / s;
-			this.z = 0.25 * s;
-		}
-		return this;
-	}
-	,mult: function(q) {
-		var q1x = this.x;
-		var q1y = this.y;
-		var q1z = this.z;
-		var q1w = this.w;
-		var q2x = q.x;
-		var q2y = q.y;
-		var q2z = q.z;
-		var q2w = q.w;
-		this.x = q1x * q2w + q1w * q2x + q1y * q2z - q1z * q2y;
-		this.y = q1w * q2y - q1x * q2z + q1y * q2w + q1z * q2x;
-		this.z = q1w * q2z + q1x * q2y - q1y * q2x + q1z * q2w;
-		this.w = q1w * q2w - q1x * q2x - q1y * q2y - q1z * q2z;
-		return this;
-	}
-	,multquats: function(q1,q2) {
-		var q1x = q1.x;
-		var q1y = q1.y;
-		var q1z = q1.z;
-		var q1w = q1.w;
-		var q2x = q2.x;
-		var q2y = q2.y;
-		var q2z = q2.z;
-		var q2w = q2.w;
-		this.x = q1x * q2w + q1w * q2x + q1y * q2z - q1z * q2y;
-		this.y = q1w * q2y - q1x * q2z + q1y * q2w + q1z * q2x;
-		this.z = q1w * q2z + q1x * q2y - q1y * q2x + q1z * q2w;
-		this.w = q1w * q2w - q1x * q2x - q1y * q2y - q1z * q2z;
-		return this;
-	}
-	,normalize: function() {
-		var l = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
-		if(l == 0.0) {
-			this.x = 0;
-			this.y = 0;
-			this.z = 0;
-			this.w = 0;
-		} else {
-			l = 1.0 / l;
-			this.x *= l;
-			this.y *= l;
-			this.z *= l;
-			this.w *= l;
-		}
-		return this;
-	}
-	,setFrom: function(q) {
-		this.x = q.x;
-		this.y = q.y;
-		this.z = q.z;
-		this.w = q.w;
-		return this;
-	}
-	,getEuler: function() {
-		var a = -2 * (this.x * this.z - this.w * this.y);
-		var b = this.w * this.w + this.x * this.x - this.y * this.y - this.z * this.z;
-		var c = 2 * (this.x * this.y + this.w * this.z);
-		var d = -2 * (this.y * this.z - this.w * this.x);
-		var e = this.w * this.w - this.x * this.x + this.y * this.y - this.z * this.z;
-		return new iron_math_Vec4(Math.atan2(d,e),Math.atan2(a,b),Math.asin(c));
-	}
-	,fromEuler: function(x,y,z) {
-		var f = x / 2;
-		var c1 = Math.cos(f);
-		var s1 = Math.sin(f);
-		f = y / 2;
-		var c2 = Math.cos(f);
-		var s2 = Math.sin(f);
-		f = z / 2;
-		var c3 = Math.cos(f);
-		var s3 = Math.sin(f);
-		this.x = s1 * c2 * c3 + c1 * s2 * s3;
-		this.y = c1 * s2 * c3 + s1 * c2 * s3;
-		this.z = c1 * c2 * s3 - s1 * s2 * c3;
-		this.w = c1 * c2 * c3 - s1 * s2 * s3;
-		return this;
-	}
-	,lerp: function(from,to,s) {
-		var fromx = from.x;
-		var fromy = from.y;
-		var fromz = from.z;
-		var fromw = from.w;
-		var dot = from.x * to.x + from.y * to.y + from.z * to.z + from.w * to.w;
-		if(dot < 0.0) {
-			fromx = -fromx;
-			fromy = -fromy;
-			fromz = -fromz;
-			fromw = -fromw;
-		}
-		this.x = fromx + (to.x - fromx) * s;
-		this.y = fromy + (to.y - fromy) * s;
-		this.z = fromz + (to.z - fromz) * s;
-		this.w = fromw + (to.w - fromw) * s;
-		var l = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
-		if(l == 0.0) {
-			this.x = 0;
-			this.y = 0;
-			this.z = 0;
-			this.w = 0;
-		} else {
-			l = 1.0 / l;
-			this.x *= l;
-			this.y *= l;
-			this.z *= l;
-			this.w *= l;
-		}
-		return this;
-	}
-	,dot: function(q) {
-		return this.x * q.x + this.y * q.y + this.z * q.z + this.w * q.w;
-	}
-	,fromTo: function(v1,v2) {
-		var a = iron_math_Quat.helpVec0;
-		var dot = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
-		if(dot < -0.999999) {
-			var a1 = iron_math_Quat.xAxis;
-			var ax = a1.x;
-			var ay = a1.y;
-			var az = a1.z;
-			var bx = v1.x;
-			var by = v1.y;
-			var bz = v1.z;
-			a.x = ay * bz - az * by;
-			a.y = az * bx - ax * bz;
-			a.z = ax * by - ay * bx;
-			if(Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z) < 0.000001) {
-				var a2 = iron_math_Quat.yAxis;
-				var ax1 = a2.x;
-				var ay1 = a2.y;
-				var az1 = a2.z;
-				var bx1 = v1.x;
-				var by1 = v1.y;
-				var bz1 = v1.z;
-				a.x = ay1 * bz1 - az1 * by1;
-				a.y = az1 * bx1 - ax1 * bz1;
-				a.z = ax1 * by1 - ay1 * bx1;
-			}
-			var n = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
-			if(n > 0.0) {
-				var invN = 1.0 / n;
-				a.x *= invN;
-				a.y *= invN;
-				a.z *= invN;
-			}
-			var angle = Math.PI;
-			var s = Math.sin(angle * 0.5);
-			this.x = a.x * s;
-			this.y = a.y * s;
-			this.z = a.z * s;
-			this.w = Math.cos(angle * 0.5);
-			var l = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
-			if(l == 0.0) {
-				this.x = 0;
-				this.y = 0;
-				this.z = 0;
-				this.w = 0;
-			} else {
-				l = 1.0 / l;
-				this.x *= l;
-				this.y *= l;
-				this.z *= l;
-				this.w *= l;
-			}
-		} else if(dot > 0.999999) {
-			this.x = 0;
-			this.y = 0;
-			this.z = 0;
-			this.w = 1;
-		} else {
-			var ax2 = v1.x;
-			var ay2 = v1.y;
-			var az2 = v1.z;
-			var bx2 = v2.x;
-			var by2 = v2.y;
-			var bz2 = v2.z;
-			a.x = ay2 * bz2 - az2 * by2;
-			a.y = az2 * bx2 - ax2 * bz2;
-			a.z = ax2 * by2 - ay2 * bx2;
-			this.x = a.x;
-			this.y = a.y;
-			this.z = a.z;
-			this.w = 1 + dot;
-			var l1 = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
-			if(l1 == 0.0) {
-				this.x = 0;
-				this.y = 0;
-				this.z = 0;
-				this.w = 0;
-			} else {
-				l1 = 1.0 / l1;
-				this.x *= l1;
-				this.y *= l1;
-				this.z *= l1;
-				this.w *= l1;
-			}
-		}
-		return this;
-	}
-	,toString: function() {
-		return this.x + ", " + this.y + ", " + this.z + ", " + this.w;
-	}
-	,__class__: iron_math_Quat
+	return null;
 };
 var iron_math_Vec2 = function(x,y) {
 	if(y == null) {
@@ -24641,170 +26525,240 @@ $hxClasses["kha.Shaders"] = kha_Shaders;
 kha_Shaders.__name__ = "kha.Shaders";
 kha_Shaders.init = function() {
 	var blobs = [];
-	var data = Reflect.field(kha_Shaders,"BLANK_mesh_fragData" + 0);
+	var data = Reflect.field(kha_Shaders,"Hex_mesh_fragData" + 0);
 	var bytes = haxe_Unserializer.run(data);
 	blobs.push(kha_internal_BytesBlob.fromBytes(bytes));
-	kha_Shaders.BLANK_mesh_frag = new kha_graphics4_FragmentShader(blobs,["BLANK_mesh.frag.d3d11"]);
+	kha_Shaders.Hex_mesh_frag = new kha_graphics4_FragmentShader(blobs,["Hex_mesh.frag.d3d11"]);
 	var blobs1 = [];
-	var data1 = Reflect.field(kha_Shaders,"BLANK_mesh_vertData" + 0);
+	var data1 = Reflect.field(kha_Shaders,"Hex_mesh_vertData" + 0);
 	var bytes1 = haxe_Unserializer.run(data1);
 	blobs1.push(kha_internal_BytesBlob.fromBytes(bytes1));
-	kha_Shaders.BLANK_mesh_vert = new kha_graphics4_VertexShader(blobs1,["BLANK_mesh.vert.d3d11"]);
+	kha_Shaders.Hex_mesh_vert = new kha_graphics4_VertexShader(blobs1,["Hex_mesh.vert.d3d11"]);
 	var blobs2 = [];
-	var data2 = Reflect.field(kha_Shaders,"BLANK_shadowmap_fragData" + 0);
+	var data2 = Reflect.field(kha_Shaders,"Hex_translucent_fragData" + 0);
 	var bytes2 = haxe_Unserializer.run(data2);
 	blobs2.push(kha_internal_BytesBlob.fromBytes(bytes2));
-	kha_Shaders.BLANK_shadowmap_frag = new kha_graphics4_FragmentShader(blobs2,["BLANK_shadowmap.frag.d3d11"]);
+	kha_Shaders.Hex_translucent_frag = new kha_graphics4_FragmentShader(blobs2,["Hex_translucent.frag.d3d11"]);
 	var blobs3 = [];
-	var data3 = Reflect.field(kha_Shaders,"BLANK_shadowmap_vertData" + 0);
+	var data3 = Reflect.field(kha_Shaders,"Hex_translucent_vertData" + 0);
 	var bytes3 = haxe_Unserializer.run(data3);
 	blobs3.push(kha_internal_BytesBlob.fromBytes(bytes3));
-	kha_Shaders.BLANK_shadowmap_vert = new kha_graphics4_VertexShader(blobs3,["BLANK_shadowmap.vert.d3d11"]);
+	kha_Shaders.Hex_translucent_vert = new kha_graphics4_VertexShader(blobs3,["Hex_translucent.vert.d3d11"]);
 	var blobs4 = [];
-	var data4 = Reflect.field(kha_Shaders,"BLANK_translucent_fragData" + 0);
+	var data4 = Reflect.field(kha_Shaders,"blur_edge_pass_fragData" + 0);
 	var bytes4 = haxe_Unserializer.run(data4);
 	blobs4.push(kha_internal_BytesBlob.fromBytes(bytes4));
-	kha_Shaders.BLANK_translucent_frag = new kha_graphics4_FragmentShader(blobs4,["BLANK_translucent.frag.d3d11"]);
+	kha_Shaders.blur_edge_pass_frag = new kha_graphics4_FragmentShader(blobs4,["blur_edge_pass.frag.d3d11"]);
 	var blobs5 = [];
-	var data5 = Reflect.field(kha_Shaders,"BLANK_translucent_vertData" + 0);
+	var data5 = Reflect.field(kha_Shaders,"compositor_pass_fragData" + 0);
 	var bytes5 = haxe_Unserializer.run(data5);
 	blobs5.push(kha_internal_BytesBlob.fromBytes(bytes5));
-	kha_Shaders.BLANK_translucent_vert = new kha_graphics4_VertexShader(blobs5,["BLANK_translucent.vert.d3d11"]);
+	kha_Shaders.compositor_pass_frag = new kha_graphics4_FragmentShader(blobs5,["compositor_pass.frag.d3d11"]);
 	var blobs6 = [];
-	var data6 = Reflect.field(kha_Shaders,"blur_edge_pass_fragData" + 0);
+	var data6 = Reflect.field(kha_Shaders,"compositor_pass_vertData" + 0);
 	var bytes6 = haxe_Unserializer.run(data6);
 	blobs6.push(kha_internal_BytesBlob.fromBytes(bytes6));
-	kha_Shaders.blur_edge_pass_frag = new kha_graphics4_FragmentShader(blobs6,["blur_edge_pass.frag.d3d11"]);
+	kha_Shaders.compositor_pass_vert = new kha_graphics4_VertexShader(blobs6,["compositor_pass.vert.d3d11"]);
 	var blobs7 = [];
-	var data7 = Reflect.field(kha_Shaders,"compositor_pass_fragData" + 0);
+	var data7 = Reflect.field(kha_Shaders,"deferred_light_fragData" + 0);
 	var bytes7 = haxe_Unserializer.run(data7);
 	blobs7.push(kha_internal_BytesBlob.fromBytes(bytes7));
-	kha_Shaders.compositor_pass_frag = new kha_graphics4_FragmentShader(blobs7,["compositor_pass.frag.d3d11"]);
+	kha_Shaders.deferred_light_frag = new kha_graphics4_FragmentShader(blobs7,["deferred_light.frag.d3d11"]);
 	var blobs8 = [];
-	var data8 = Reflect.field(kha_Shaders,"compositor_pass_vertData" + 0);
+	var data8 = Reflect.field(kha_Shaders,"hoverHexBlue_mesh_fragData" + 0);
 	var bytes8 = haxe_Unserializer.run(data8);
 	blobs8.push(kha_internal_BytesBlob.fromBytes(bytes8));
-	kha_Shaders.compositor_pass_vert = new kha_graphics4_VertexShader(blobs8,["compositor_pass.vert.d3d11"]);
+	kha_Shaders.hoverHexBlue_mesh_frag = new kha_graphics4_FragmentShader(blobs8,["hoverHexBlue_mesh.frag.d3d11"]);
 	var blobs9 = [];
-	var data9 = Reflect.field(kha_Shaders,"deferred_light_fragData" + 0);
+	var data9 = Reflect.field(kha_Shaders,"hoverHexBlue_mesh_vertData" + 0);
 	var bytes9 = haxe_Unserializer.run(data9);
 	blobs9.push(kha_internal_BytesBlob.fromBytes(bytes9));
-	kha_Shaders.deferred_light_frag = new kha_graphics4_FragmentShader(blobs9,["deferred_light.frag.d3d11"]);
+	kha_Shaders.hoverHexBlue_mesh_vert = new kha_graphics4_VertexShader(blobs9,["hoverHexBlue_mesh.vert.d3d11"]);
 	var blobs10 = [];
-	var data10 = Reflect.field(kha_Shaders,"line_deferred_fragData" + 0);
+	var data10 = Reflect.field(kha_Shaders,"hoverHexBlue_shadowmap_fragData" + 0);
 	var bytes10 = haxe_Unserializer.run(data10);
 	blobs10.push(kha_internal_BytesBlob.fromBytes(bytes10));
-	kha_Shaders.line_deferred_frag = new kha_graphics4_FragmentShader(blobs10,["line_deferred.frag.d3d11"]);
+	kha_Shaders.hoverHexBlue_shadowmap_frag = new kha_graphics4_FragmentShader(blobs10,["hoverHexBlue_shadowmap.frag.d3d11"]);
 	var blobs11 = [];
-	var data11 = Reflect.field(kha_Shaders,"line_fragData" + 0);
+	var data11 = Reflect.field(kha_Shaders,"hoverHexBlue_shadowmap_vertData" + 0);
 	var bytes11 = haxe_Unserializer.run(data11);
 	blobs11.push(kha_internal_BytesBlob.fromBytes(bytes11));
-	kha_Shaders.line_frag = new kha_graphics4_FragmentShader(blobs11,["line.frag.d3d11"]);
+	kha_Shaders.hoverHexBlue_shadowmap_vert = new kha_graphics4_VertexShader(blobs11,["hoverHexBlue_shadowmap.vert.d3d11"]);
 	var blobs12 = [];
-	var data12 = Reflect.field(kha_Shaders,"line_vertData" + 0);
+	var data12 = Reflect.field(kha_Shaders,"hoverHexBlue_translucent_fragData" + 0);
 	var bytes12 = haxe_Unserializer.run(data12);
 	blobs12.push(kha_internal_BytesBlob.fromBytes(bytes12));
-	kha_Shaders.line_vert = new kha_graphics4_VertexShader(blobs12,["line.vert.d3d11"]);
+	kha_Shaders.hoverHexBlue_translucent_frag = new kha_graphics4_FragmentShader(blobs12,["hoverHexBlue_translucent.frag.d3d11"]);
 	var blobs13 = [];
-	var data13 = Reflect.field(kha_Shaders,"painter_colored_fragData" + 0);
+	var data13 = Reflect.field(kha_Shaders,"hoverHexBlue_translucent_vertData" + 0);
 	var bytes13 = haxe_Unserializer.run(data13);
 	blobs13.push(kha_internal_BytesBlob.fromBytes(bytes13));
-	kha_Shaders.painter_colored_frag = new kha_graphics4_FragmentShader(blobs13,["painter-colored.frag.d3d11"]);
+	kha_Shaders.hoverHexBlue_translucent_vert = new kha_graphics4_VertexShader(blobs13,["hoverHexBlue_translucent.vert.d3d11"]);
 	var blobs14 = [];
-	var data14 = Reflect.field(kha_Shaders,"painter_colored_vertData" + 0);
+	var data14 = Reflect.field(kha_Shaders,"hoverHexGreen_mesh_fragData" + 0);
 	var bytes14 = haxe_Unserializer.run(data14);
 	blobs14.push(kha_internal_BytesBlob.fromBytes(bytes14));
-	kha_Shaders.painter_colored_vert = new kha_graphics4_VertexShader(blobs14,["painter-colored.vert.d3d11"]);
+	kha_Shaders.hoverHexGreen_mesh_frag = new kha_graphics4_FragmentShader(blobs14,["hoverHexGreen_mesh.frag.d3d11"]);
 	var blobs15 = [];
-	var data15 = Reflect.field(kha_Shaders,"painter_image_fragData" + 0);
+	var data15 = Reflect.field(kha_Shaders,"hoverHexGreen_shadowmap_vertData" + 0);
 	var bytes15 = haxe_Unserializer.run(data15);
 	blobs15.push(kha_internal_BytesBlob.fromBytes(bytes15));
-	kha_Shaders.painter_image_frag = new kha_graphics4_FragmentShader(blobs15,["painter-image.frag.d3d11"]);
+	kha_Shaders.hoverHexGreen_shadowmap_vert = new kha_graphics4_VertexShader(blobs15,["hoverHexGreen_shadowmap.vert.d3d11"]);
 	var blobs16 = [];
-	var data16 = Reflect.field(kha_Shaders,"painter_image_vertData" + 0);
+	var data16 = Reflect.field(kha_Shaders,"hoverHexGreen_translucent_fragData" + 0);
 	var bytes16 = haxe_Unserializer.run(data16);
 	blobs16.push(kha_internal_BytesBlob.fromBytes(bytes16));
-	kha_Shaders.painter_image_vert = new kha_graphics4_VertexShader(blobs16,["painter-image.vert.d3d11"]);
+	kha_Shaders.hoverHexGreen_translucent_frag = new kha_graphics4_FragmentShader(blobs16,["hoverHexGreen_translucent.frag.d3d11"]);
 	var blobs17 = [];
-	var data17 = Reflect.field(kha_Shaders,"painter_text_fragData" + 0);
+	var data17 = Reflect.field(kha_Shaders,"hoverHexGreen_translucent_vertData" + 0);
 	var bytes17 = haxe_Unserializer.run(data17);
 	blobs17.push(kha_internal_BytesBlob.fromBytes(bytes17));
-	kha_Shaders.painter_text_frag = new kha_graphics4_FragmentShader(blobs17,["painter-text.frag.d3d11"]);
+	kha_Shaders.hoverHexGreen_translucent_vert = new kha_graphics4_VertexShader(blobs17,["hoverHexGreen_translucent.vert.d3d11"]);
 	var blobs18 = [];
-	var data18 = Reflect.field(kha_Shaders,"painter_text_vertData" + 0);
+	var data18 = Reflect.field(kha_Shaders,"hoverHex_mesh_fragData" + 0);
 	var bytes18 = haxe_Unserializer.run(data18);
 	blobs18.push(kha_internal_BytesBlob.fromBytes(bytes18));
-	kha_Shaders.painter_text_vert = new kha_graphics4_VertexShader(blobs18,["painter-text.vert.d3d11"]);
+	kha_Shaders.hoverHex_mesh_frag = new kha_graphics4_FragmentShader(blobs18,["hoverHex_mesh.frag.d3d11"]);
 	var blobs19 = [];
-	var data19 = Reflect.field(kha_Shaders,"painter_video_fragData" + 0);
+	var data19 = Reflect.field(kha_Shaders,"hoverHex_mesh_vertData" + 0);
 	var bytes19 = haxe_Unserializer.run(data19);
 	blobs19.push(kha_internal_BytesBlob.fromBytes(bytes19));
-	kha_Shaders.painter_video_frag = new kha_graphics4_FragmentShader(blobs19,["painter-video.frag.d3d11"]);
+	kha_Shaders.hoverHex_mesh_vert = new kha_graphics4_VertexShader(blobs19,["hoverHex_mesh.vert.d3d11"]);
 	var blobs20 = [];
-	var data20 = Reflect.field(kha_Shaders,"painter_video_vertData" + 0);
+	var data20 = Reflect.field(kha_Shaders,"hoverHex_shadowmap_fragData" + 0);
 	var bytes20 = haxe_Unserializer.run(data20);
 	blobs20.push(kha_internal_BytesBlob.fromBytes(bytes20));
-	kha_Shaders.painter_video_vert = new kha_graphics4_VertexShader(blobs20,["painter-video.vert.d3d11"]);
+	kha_Shaders.hoverHex_shadowmap_frag = new kha_graphics4_FragmentShader(blobs20,["hoverHex_shadowmap.frag.d3d11"]);
 	var blobs21 = [];
-	var data21 = Reflect.field(kha_Shaders,"pass_vertData" + 0);
+	var data21 = Reflect.field(kha_Shaders,"hoverHex_shadowmap_vertData" + 0);
 	var bytes21 = haxe_Unserializer.run(data21);
 	blobs21.push(kha_internal_BytesBlob.fromBytes(bytes21));
-	kha_Shaders.pass_vert = new kha_graphics4_VertexShader(blobs21,["pass.vert.d3d11"]);
+	kha_Shaders.hoverHex_shadowmap_vert = new kha_graphics4_VertexShader(blobs21,["hoverHex_shadowmap.vert.d3d11"]);
 	var blobs22 = [];
-	var data22 = Reflect.field(kha_Shaders,"pass_viewray_vertData" + 0);
+	var data22 = Reflect.field(kha_Shaders,"hoverHex_translucent_fragData" + 0);
 	var bytes22 = haxe_Unserializer.run(data22);
 	blobs22.push(kha_internal_BytesBlob.fromBytes(bytes22));
-	kha_Shaders.pass_viewray_vert = new kha_graphics4_VertexShader(blobs22,["pass_viewray.vert.d3d11"]);
+	kha_Shaders.hoverHex_translucent_frag = new kha_graphics4_FragmentShader(blobs22,["hoverHex_translucent.frag.d3d11"]);
 	var blobs23 = [];
-	var data23 = Reflect.field(kha_Shaders,"smaa_blend_weight_fragData" + 0);
+	var data23 = Reflect.field(kha_Shaders,"hoverHex_translucent_vertData" + 0);
 	var bytes23 = haxe_Unserializer.run(data23);
 	blobs23.push(kha_internal_BytesBlob.fromBytes(bytes23));
-	kha_Shaders.smaa_blend_weight_frag = new kha_graphics4_FragmentShader(blobs23,["smaa_blend_weight.frag.d3d11"]);
+	kha_Shaders.hoverHex_translucent_vert = new kha_graphics4_VertexShader(blobs23,["hoverHex_translucent.vert.d3d11"]);
 	var blobs24 = [];
-	var data24 = Reflect.field(kha_Shaders,"smaa_blend_weight_vertData" + 0);
+	var data24 = Reflect.field(kha_Shaders,"line_deferred_fragData" + 0);
 	var bytes24 = haxe_Unserializer.run(data24);
 	blobs24.push(kha_internal_BytesBlob.fromBytes(bytes24));
-	kha_Shaders.smaa_blend_weight_vert = new kha_graphics4_VertexShader(blobs24,["smaa_blend_weight.vert.d3d11"]);
+	kha_Shaders.line_deferred_frag = new kha_graphics4_FragmentShader(blobs24,["line_deferred.frag.d3d11"]);
 	var blobs25 = [];
-	var data25 = Reflect.field(kha_Shaders,"smaa_edge_detect_fragData" + 0);
+	var data25 = Reflect.field(kha_Shaders,"line_fragData" + 0);
 	var bytes25 = haxe_Unserializer.run(data25);
 	blobs25.push(kha_internal_BytesBlob.fromBytes(bytes25));
-	kha_Shaders.smaa_edge_detect_frag = new kha_graphics4_FragmentShader(blobs25,["smaa_edge_detect.frag.d3d11"]);
+	kha_Shaders.line_frag = new kha_graphics4_FragmentShader(blobs25,["line.frag.d3d11"]);
 	var blobs26 = [];
-	var data26 = Reflect.field(kha_Shaders,"smaa_edge_detect_vertData" + 0);
+	var data26 = Reflect.field(kha_Shaders,"line_vertData" + 0);
 	var bytes26 = haxe_Unserializer.run(data26);
 	blobs26.push(kha_internal_BytesBlob.fromBytes(bytes26));
-	kha_Shaders.smaa_edge_detect_vert = new kha_graphics4_VertexShader(blobs26,["smaa_edge_detect.vert.d3d11"]);
+	kha_Shaders.line_vert = new kha_graphics4_VertexShader(blobs26,["line.vert.d3d11"]);
 	var blobs27 = [];
-	var data27 = Reflect.field(kha_Shaders,"smaa_neighborhood_blend_fragData" + 0);
+	var data27 = Reflect.field(kha_Shaders,"painter_colored_fragData" + 0);
 	var bytes27 = haxe_Unserializer.run(data27);
 	blobs27.push(kha_internal_BytesBlob.fromBytes(bytes27));
-	kha_Shaders.smaa_neighborhood_blend_frag = new kha_graphics4_FragmentShader(blobs27,["smaa_neighborhood_blend.frag.d3d11"]);
+	kha_Shaders.painter_colored_frag = new kha_graphics4_FragmentShader(blobs27,["painter-colored.frag.d3d11"]);
 	var blobs28 = [];
-	var data28 = Reflect.field(kha_Shaders,"smaa_neighborhood_blend_vertData" + 0);
+	var data28 = Reflect.field(kha_Shaders,"painter_colored_vertData" + 0);
 	var bytes28 = haxe_Unserializer.run(data28);
 	blobs28.push(kha_internal_BytesBlob.fromBytes(bytes28));
-	kha_Shaders.smaa_neighborhood_blend_vert = new kha_graphics4_VertexShader(blobs28,["smaa_neighborhood_blend.vert.d3d11"]);
+	kha_Shaders.painter_colored_vert = new kha_graphics4_VertexShader(blobs28,["painter-colored.vert.d3d11"]);
 	var blobs29 = [];
-	var data29 = Reflect.field(kha_Shaders,"ssao_pass_fragData" + 0);
+	var data29 = Reflect.field(kha_Shaders,"painter_image_fragData" + 0);
 	var bytes29 = haxe_Unserializer.run(data29);
 	blobs29.push(kha_internal_BytesBlob.fromBytes(bytes29));
-	kha_Shaders.ssao_pass_frag = new kha_graphics4_FragmentShader(blobs29,["ssao_pass.frag.d3d11"]);
+	kha_Shaders.painter_image_frag = new kha_graphics4_FragmentShader(blobs29,["painter-image.frag.d3d11"]);
 	var blobs30 = [];
-	var data30 = Reflect.field(kha_Shaders,"translucent_resolve_fragData" + 0);
+	var data30 = Reflect.field(kha_Shaders,"painter_image_vertData" + 0);
 	var bytes30 = haxe_Unserializer.run(data30);
 	blobs30.push(kha_internal_BytesBlob.fromBytes(bytes30));
-	kha_Shaders.translucent_resolve_frag = new kha_graphics4_FragmentShader(blobs30,["translucent_resolve.frag.d3d11"]);
+	kha_Shaders.painter_image_vert = new kha_graphics4_VertexShader(blobs30,["painter-image.vert.d3d11"]);
 	var blobs31 = [];
-	var data31 = Reflect.field(kha_Shaders,"world_pass_fragData" + 0);
+	var data31 = Reflect.field(kha_Shaders,"painter_text_fragData" + 0);
 	var bytes31 = haxe_Unserializer.run(data31);
 	blobs31.push(kha_internal_BytesBlob.fromBytes(bytes31));
-	kha_Shaders.world_pass_frag = new kha_graphics4_FragmentShader(blobs31,["world_pass.frag.d3d11"]);
+	kha_Shaders.painter_text_frag = new kha_graphics4_FragmentShader(blobs31,["painter-text.frag.d3d11"]);
 	var blobs32 = [];
-	var data32 = Reflect.field(kha_Shaders,"world_pass_vertData" + 0);
+	var data32 = Reflect.field(kha_Shaders,"painter_text_vertData" + 0);
 	var bytes32 = haxe_Unserializer.run(data32);
 	blobs32.push(kha_internal_BytesBlob.fromBytes(bytes32));
-	kha_Shaders.world_pass_vert = new kha_graphics4_VertexShader(blobs32,["world_pass.vert.d3d11"]);
+	kha_Shaders.painter_text_vert = new kha_graphics4_VertexShader(blobs32,["painter-text.vert.d3d11"]);
+	var blobs33 = [];
+	var data33 = Reflect.field(kha_Shaders,"painter_video_fragData" + 0);
+	var bytes33 = haxe_Unserializer.run(data33);
+	blobs33.push(kha_internal_BytesBlob.fromBytes(bytes33));
+	kha_Shaders.painter_video_frag = new kha_graphics4_FragmentShader(blobs33,["painter-video.frag.d3d11"]);
+	var blobs34 = [];
+	var data34 = Reflect.field(kha_Shaders,"painter_video_vertData" + 0);
+	var bytes34 = haxe_Unserializer.run(data34);
+	blobs34.push(kha_internal_BytesBlob.fromBytes(bytes34));
+	kha_Shaders.painter_video_vert = new kha_graphics4_VertexShader(blobs34,["painter-video.vert.d3d11"]);
+	var blobs35 = [];
+	var data35 = Reflect.field(kha_Shaders,"pass_vertData" + 0);
+	var bytes35 = haxe_Unserializer.run(data35);
+	blobs35.push(kha_internal_BytesBlob.fromBytes(bytes35));
+	kha_Shaders.pass_vert = new kha_graphics4_VertexShader(blobs35,["pass.vert.d3d11"]);
+	var blobs36 = [];
+	var data36 = Reflect.field(kha_Shaders,"pass_viewray_vertData" + 0);
+	var bytes36 = haxe_Unserializer.run(data36);
+	blobs36.push(kha_internal_BytesBlob.fromBytes(bytes36));
+	kha_Shaders.pass_viewray_vert = new kha_graphics4_VertexShader(blobs36,["pass_viewray.vert.d3d11"]);
+	var blobs37 = [];
+	var data37 = Reflect.field(kha_Shaders,"smaa_blend_weight_fragData" + 0);
+	var bytes37 = haxe_Unserializer.run(data37);
+	blobs37.push(kha_internal_BytesBlob.fromBytes(bytes37));
+	kha_Shaders.smaa_blend_weight_frag = new kha_graphics4_FragmentShader(blobs37,["smaa_blend_weight.frag.d3d11"]);
+	var blobs38 = [];
+	var data38 = Reflect.field(kha_Shaders,"smaa_blend_weight_vertData" + 0);
+	var bytes38 = haxe_Unserializer.run(data38);
+	blobs38.push(kha_internal_BytesBlob.fromBytes(bytes38));
+	kha_Shaders.smaa_blend_weight_vert = new kha_graphics4_VertexShader(blobs38,["smaa_blend_weight.vert.d3d11"]);
+	var blobs39 = [];
+	var data39 = Reflect.field(kha_Shaders,"smaa_edge_detect_fragData" + 0);
+	var bytes39 = haxe_Unserializer.run(data39);
+	blobs39.push(kha_internal_BytesBlob.fromBytes(bytes39));
+	kha_Shaders.smaa_edge_detect_frag = new kha_graphics4_FragmentShader(blobs39,["smaa_edge_detect.frag.d3d11"]);
+	var blobs40 = [];
+	var data40 = Reflect.field(kha_Shaders,"smaa_edge_detect_vertData" + 0);
+	var bytes40 = haxe_Unserializer.run(data40);
+	blobs40.push(kha_internal_BytesBlob.fromBytes(bytes40));
+	kha_Shaders.smaa_edge_detect_vert = new kha_graphics4_VertexShader(blobs40,["smaa_edge_detect.vert.d3d11"]);
+	var blobs41 = [];
+	var data41 = Reflect.field(kha_Shaders,"smaa_neighborhood_blend_fragData" + 0);
+	var bytes41 = haxe_Unserializer.run(data41);
+	blobs41.push(kha_internal_BytesBlob.fromBytes(bytes41));
+	kha_Shaders.smaa_neighborhood_blend_frag = new kha_graphics4_FragmentShader(blobs41,["smaa_neighborhood_blend.frag.d3d11"]);
+	var blobs42 = [];
+	var data42 = Reflect.field(kha_Shaders,"smaa_neighborhood_blend_vertData" + 0);
+	var bytes42 = haxe_Unserializer.run(data42);
+	blobs42.push(kha_internal_BytesBlob.fromBytes(bytes42));
+	kha_Shaders.smaa_neighborhood_blend_vert = new kha_graphics4_VertexShader(blobs42,["smaa_neighborhood_blend.vert.d3d11"]);
+	var blobs43 = [];
+	var data43 = Reflect.field(kha_Shaders,"ssao_pass_fragData" + 0);
+	var bytes43 = haxe_Unserializer.run(data43);
+	blobs43.push(kha_internal_BytesBlob.fromBytes(bytes43));
+	kha_Shaders.ssao_pass_frag = new kha_graphics4_FragmentShader(blobs43,["ssao_pass.frag.d3d11"]);
+	var blobs44 = [];
+	var data44 = Reflect.field(kha_Shaders,"translucent_resolve_fragData" + 0);
+	var bytes44 = haxe_Unserializer.run(data44);
+	blobs44.push(kha_internal_BytesBlob.fromBytes(bytes44));
+	kha_Shaders.translucent_resolve_frag = new kha_graphics4_FragmentShader(blobs44,["translucent_resolve.frag.d3d11"]);
+	var blobs45 = [];
+	var data45 = Reflect.field(kha_Shaders,"world_pass_fragData" + 0);
+	var bytes45 = haxe_Unserializer.run(data45);
+	blobs45.push(kha_internal_BytesBlob.fromBytes(bytes45));
+	kha_Shaders.world_pass_frag = new kha_graphics4_FragmentShader(blobs45,["world_pass.frag.d3d11"]);
+	var blobs46 = [];
+	var data46 = Reflect.field(kha_Shaders,"world_pass_vertData" + 0);
+	var bytes46 = haxe_Unserializer.run(data46);
+	blobs46.push(kha_internal_BytesBlob.fromBytes(bytes46));
+	kha_Shaders.world_pass_vert = new kha_graphics4_VertexShader(blobs46,["world_pass.vert.d3d11"]);
 };
 var kha_Sound = function() {
 	this.sampleRate = 0;
@@ -43580,6 +45534,30 @@ armory_trait_internal_DebugDraw.corner2 = new iron_math_Vec4();
 armory_trait_internal_DebugDraw.corner3 = new iron_math_Vec4();
 armory_trait_internal_DebugDraw.corner4 = new iron_math_Vec4();
 armory_trait_internal_DebugDraw.cameraLook = new iron_math_Vec4();
+armory_trait_physics_bullet_PhysicsWorld.sceneRemoved = false;
+armory_trait_physics_bullet_PhysicsWorld.nullvec = true;
+armory_trait_physics_bullet_PhysicsWorld.physTime = 0.0;
+kha_math_FastMatrix4.width = 4;
+kha_math_FastMatrix4.height = 4;
+iron_math_Mat4.helpVec = new iron_math_Vec4();
+iron_math_Mat4.helpMat = new iron_math_Mat4(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
+iron_math_Quat.helpVec0 = new iron_math_Vec4();
+iron_math_Quat.helpVec1 = new iron_math_Vec4();
+iron_math_Quat.helpVec2 = new iron_math_Vec4();
+iron_math_Quat.helpMat = new iron_math_Mat4(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
+iron_math_Quat.xAxis = new iron_math_Vec4(1.0,0.0,0.0);
+iron_math_Quat.yAxis = new iron_math_Vec4(0.0,1.0,0.0);
+armory_trait_physics_bullet_RigidBody.nextId = 0;
+armory_trait_physics_bullet_RigidBody.ammoArray = -1;
+armory_trait_physics_bullet_RigidBody.nullvec = true;
+armory_trait_physics_bullet_RigidBody.quat = new iron_math_Quat();
+armory_trait_physics_bullet_RigidBody.CF_STATIC_OBJECT = 1;
+armory_trait_physics_bullet_RigidBody.CF_KINEMATIC_OBJECT = 2;
+armory_trait_physics_bullet_RigidBody.CF_NO_CONTACT_RESPONSE = 4;
+armory_trait_physics_bullet_RigidBody.CF_CHARACTER_OBJECT = 16;
+armory_trait_physics_bullet_RigidBody.convexHullCache = new haxe_ds_ObjectMap();
+armory_trait_physics_bullet_RigidBody.triangleMeshCache = new haxe_ds_ObjectMap();
+armory_trait_physics_bullet_RigidBody.usersCache = new haxe_ds_ObjectMap();
 haxe_Unserializer.DEFAULT_RESOLVER = new haxe__$Unserializer_DefaultResolver();
 haxe_Unserializer.BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%:";
 haxe_io_FPHelper.helper = new DataView(new ArrayBuffer(8));
@@ -43594,16 +45572,12 @@ iron_data_ConstData.skydomePos = [-0.55557,0.0,0.83147,-0.544895,0.108386,0.8314
 iron_data_ConstData.skydomeNor = [0.559771,0.0,-0.828639,0.548997,-0.109195,-0.828639,0.380413,-0.075655,-0.92169,0.710135,0.0,-0.704031,0.696493,-0.138524,-0.704031,0.833338,0.0,-0.552751,0.817316,-0.162572,-0.552751,0.924741,0.0,-0.380535,0.90698,-0.180395,-0.380535,0.980987,0.0,-0.193915,0.962157,-0.191382,-0.193915,0.999878,0.0,-0.015015,0.980651,-0.195044,-0.015015,0.200964,0.0,-0.979583,0.197089,-0.039186,-0.979583,0.0,0.0,-1.0,0.858486,0.0,0.512803,0.841975,-0.167455,0.512803,0.38786,0.0,-0.92169,0.358348,-0.148412,-0.92169,0.517136,-0.214209,-0.828639,0.656056,-0.271737,-0.704031,0.76989,-0.318888,-0.552751,0.854366,-0.353862,-0.380535,0.906339,-0.375408,-0.193915,0.923765,-0.382611,-0.015015,0.185644,-0.076907,-0.979583,0.793146,-0.328532,0.512803,0.768914,-0.513749,-0.380535,0.815668,-0.545,-0.193915,0.831355,-0.555498,-0.015015,0.167089,-0.111637,-0.979583,0.713797,-0.476943,0.512803,0.322489,-0.215491,-0.92169,0.465407,-0.310984,-0.828639,0.590442,-0.394513,-0.704031,0.692892,-0.462966,-0.552751,0.395795,-0.395795,-0.828639,0.502121,-0.502121,-0.704031,0.589251,-0.589251,-0.552751,0.65389,-0.65389,-0.380535,0.693655,-0.693655,-0.193915,0.707022,-0.707022,-0.015015,0.142094,-0.142094,-0.979583,0.607044,-0.607044,0.512803,0.27427,-0.27427,-0.92169,0.545,-0.815668,-0.193915,0.555498,-0.831355,-0.015015,0.111637,-0.167089,-0.979583,0.476943,-0.713797,0.512803,0.215491,-0.322489,-0.92169,0.310984,-0.465407,-0.828639,0.394513,-0.590442,-0.704031,0.462966,-0.692892,-0.552751,0.513749,-0.768914,-0.380535,0.214209,-0.517136,-0.828639,0.271737,-0.656056,-0.704031,0.318888,-0.76989,-0.552751,0.353862,-0.854366,-0.380535,0.375408,-0.906339,-0.193915,0.382611,-0.923765,-0.015015,0.076907,-0.185644,-0.979583,0.328532,-0.793146,0.512803,0.148412,-0.358348,-0.92169,0.191382,-0.962157,-0.193915,0.180395,-0.90698,-0.380535,0.195044,-0.980651,-0.015015,0.039186,-0.197089,-0.979583,0.167455,-0.841975,0.512803,0.075655,-0.380413,-0.92169,0.109195,-0.548997,-0.828639,0.138524,-0.696493,-0.704031,0.162572,-0.817316,-0.552751,0.0,-0.710135,-0.704031,0.0,-0.833338,-0.552751,0.0,-0.924741,-0.380535,0.0,-0.980987,-0.193915,0.0,-0.999878,-0.015015,0.0,-0.200964,-0.979583,0.0,-0.858486,0.512803,0.0,-0.38786,-0.92169,0.0,-0.559771,-0.828639,-0.195044,-0.980651,-0.015015,-0.039186,-0.197089,-0.979583,-0.167455,-0.841975,0.512803,-0.075655,-0.380413,-0.92169,-0.109195,-0.548997,-0.828639,-0.138524,-0.696493,-0.704031,-0.162572,-0.817316,-0.552751,-0.180395,-0.90698,-0.380535,-0.191382,-0.962157,-0.193915,-0.318888,-0.76989,-0.552751,-0.353862,-0.854366,-0.380535,-0.375408,-0.906339,-0.193915,-0.382611,-0.923765,-0.015015,-0.076907,-0.185644,-0.979583,-0.328532,-0.793146,0.512803,-0.148412,-0.358348,-0.92169,-0.214209,-0.517136,-0.828639,-0.271737,-0.656056,-0.704031,-0.111637,-0.167089,-0.979583,-0.476943,-0.713797,0.512803,-0.555498,-0.831355,-0.015015,-0.215491,-0.322489,-0.92169,-0.310984,-0.465407,-0.828639,-0.394513,-0.590442,-0.704031,-0.462966,-0.692892,-0.552751,-0.513749,-0.768914,-0.380535,-0.545,-0.815668,-0.193915,-0.589251,-0.589251,-0.552751,-0.65389,-0.65389,-0.380535,-0.693655,-0.693655,-0.193915,-0.707022,-0.707022,-0.015015,-0.142094,-0.142094,-0.979583,-0.607044,-0.607044,0.512803,-0.27427,-0.27427,-0.92169,-0.395795,-0.395795,-0.828639,-0.502121,-0.502121,-0.704031,-0.713797,-0.476943,0.512803,-0.831355,-0.555498,-0.015015,-0.322489,-0.215491,-0.92169,-0.465407,-0.310984,-0.828639,-0.590442,-0.394513,-0.704031,-0.692892,-0.462966,-0.552751,-0.768914,-0.513749,-0.380535,-0.815668,-0.545,-0.193915,-0.167089,-0.111637,-0.979583,-0.854366,-0.353862,-0.380535,-0.906339,-0.375408,-0.193915,-0.923765,-0.382611,-0.015015,-0.185644,-0.076907,-0.979583,-0.793146,-0.328532,0.512803,-0.358348,-0.148412,-0.92169,-0.517136,-0.214209,-0.828639,-0.656056,-0.271737,-0.704031,-0.76989,-0.318888,-0.552751,-0.380413,-0.075655,-0.92169,-0.548997,-0.109195,-0.828639,-0.696493,-0.138524,-0.704031,-0.817316,-0.162572,-0.552751,-0.90698,-0.180395,-0.380535,-0.962157,-0.191382,-0.193915,-0.980651,-0.195044,-0.015015,-0.197089,-0.039186,-0.979583,-0.841975,-0.167455,0.512803,-0.924741,0.0,-0.380535,-0.980987,0.0,-0.193915,-0.999878,0.0,-0.015015,-0.200964,0.0,-0.979583,-0.858486,0.0,0.512803,-0.38786,0.0,-0.92169,-0.559771,0.0,-0.828639,-0.710135,0.0,-0.704031,-0.833338,0.0,-0.552751,-0.548997,0.109195,-0.828639,-0.696493,0.138524,-0.704031,-0.817316,0.162572,-0.552751,-0.90698,0.180395,-0.380535,-0.962157,0.191382,-0.193915,-0.980651,0.195044,-0.015015,-0.197089,0.039186,-0.979583,-0.841975,0.167455,0.512803,-0.380413,0.075655,-0.92169,-0.906339,0.375408,-0.193915,-0.854366,0.353862,-0.380535,-0.923765,0.382611,-0.015015,-0.185644,0.076907,-0.979583,-0.793146,0.328532,0.512803,-0.358348,0.148412,-0.92169,-0.517136,0.214209,-0.828639,-0.656056,0.271737,-0.704031,-0.76989,0.318888,-0.552751,-0.590442,0.394513,-0.704031,-0.692892,0.462966,-0.552751,-0.768914,0.513749,-0.380535,-0.815668,0.545,-0.193915,-0.831355,0.555498,-0.015015,-0.167089,0.111637,-0.979583,-0.713797,0.476943,0.512803,-0.322489,0.215491,-0.92169,-0.465407,0.310984,-0.828639,-0.707022,0.707022,-0.015015,-0.693655,0.693655,-0.193915,-0.142094,0.142094,-0.979583,-0.607044,0.607044,0.512803,-0.27427,0.27427,-0.92169,-0.395795,0.395795,-0.828639,-0.502121,0.502121,-0.704031,-0.589251,0.589251,-0.552751,-0.65389,0.65389,-0.380535,-0.394513,0.590442,-0.704031,-0.310984,0.465407,-0.828639,-0.462966,0.692892,-0.552751,-0.513749,0.768914,-0.380535,-0.545,0.815668,-0.193915,-0.555498,0.831355,-0.015015,-0.111637,0.167089,-0.979583,-0.476943,0.713797,0.512803,-0.215491,0.322489,-0.92169,-0.382611,0.923765,-0.015015,-0.076907,0.185644,-0.979583,-0.328532,0.793146,0.512803,-0.148412,0.358348,-0.92169,-0.214209,0.517136,-0.828639,-0.271737,0.656056,-0.704031,-0.318888,0.76989,-0.552751,-0.353862,0.854366,-0.380535,-0.375408,0.906339,-0.193915,-0.162572,0.817316,-0.552751,-0.138524,0.696493,-0.704031,-0.180395,0.90698,-0.380535,-0.191382,0.962157,-0.193915,-0.195044,0.980651,-0.015015,-0.039186,0.197089,-0.979583,-0.167455,0.841975,0.512803,-0.075655,0.380413,-0.92169,-0.109195,0.548997,-0.828639,0.0,0.200964,-0.979583,0.0,0.858486,0.512803,0.0,0.999878,-0.015015,0.0,0.38786,-0.92169,0.0,0.559771,-0.828639,0.0,0.710135,-0.704031,0.0,0.833338,-0.552751,0.0,0.924741,-0.380535,0.0,0.980987,-0.193915,0.162572,0.817316,-0.552751,0.138524,0.696493,-0.704031,0.180395,0.90698,-0.380535,0.191382,0.962157,-0.193915,0.195044,0.980651,-0.015015,0.039186,0.197089,-0.979583,0.167455,0.841975,0.512803,0.075655,0.380413,-0.92169,0.109195,0.548997,-0.828639,0.328532,0.793146,0.512803,0.148412,0.358348,-0.92169,0.214209,0.517136,-0.828639,0.271737,0.656056,-0.704031,0.318888,0.76989,-0.552751,0.353862,0.854366,-0.380535,0.375408,0.906339,-0.193915,0.382611,0.923765,-0.015015,0.076907,0.185644,-0.979583,0.513749,0.768914,-0.380535,0.545,0.815668,-0.193915,0.555498,0.831355,-0.015015,0.111637,0.167089,-0.979583,0.476943,0.713797,0.512803,0.215491,0.322489,-0.92169,0.310984,0.465407,-0.828639,0.394513,0.590442,-0.704031,0.462966,0.692892,-0.552751,0.395795,0.395795,-0.828639,0.502121,0.502121,-0.704031,0.589251,0.589251,-0.552751,0.65389,0.65389,-0.380535,0.693655,0.693655,-0.193915,0.707022,0.707022,-0.015015,0.142094,0.142094,-0.979583,0.607044,0.607044,0.512803,0.27427,0.27427,-0.92169,0.815668,0.545,-0.193915,0.768914,0.513749,-0.380535,0.831355,0.555498,-0.015015,0.167089,0.111637,-0.979583,0.713797,0.476943,0.512803,0.322489,0.215491,-0.92169,0.465407,0.310984,-0.828639,0.590442,0.394513,-0.704031,0.692892,0.462966,-0.552751,0.517136,0.214209,-0.828639,0.358348,0.148412,-0.92169,0.656056,0.271737,-0.704031,0.76989,0.318888,-0.552751,0.854366,0.353862,-0.380535,0.906339,0.375408,-0.193915,0.923765,0.382611,-0.015015,0.185644,0.076907,-0.979583,0.793146,0.328532,0.512803,0.962157,0.191382,-0.193915,0.90698,0.180395,-0.380535,0.980651,0.195044,-0.015015,0.197089,0.039186,-0.979583,0.841975,0.167486,0.512803,0.380413,0.075655,-0.92169,0.548997,0.109195,-0.828639,0.696493,0.138524,-0.704031,0.817316,0.162572,-0.552751,0.0,0.0,0.999969];
 iron_data_MaterialData.uidCounter = 0;
 iron_data_MaterialContext.num = 0;
-kha_math_FastMatrix4.width = 4;
-kha_math_FastMatrix4.height = 4;
-iron_math_Mat4.helpVec = new iron_math_Vec4();
-iron_math_Mat4.helpMat = new iron_math_Mat4(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
-iron_math_Quat.helpVec0 = new iron_math_Vec4();
-iron_math_Quat.helpVec1 = new iron_math_Vec4();
-iron_math_Quat.helpVec2 = new iron_math_Vec4();
-iron_math_Quat.helpMat = new iron_math_Mat4(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
-iron_math_Quat.xAxis = new iron_math_Vec4(1.0,0.0,0.0);
-iron_math_Quat.yAxis = new iron_math_Vec4(0.0,1.0,0.0);
+iron_math_RayCaster.VPInv = new iron_math_Mat4(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
+iron_math_RayCaster.PInv = new iron_math_Mat4(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
+iron_math_RayCaster.VInv = new iron_math_Mat4(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
+iron_math_RayCaster.loc = new iron_math_Vec4();
+iron_math_RayCaster.nor = new iron_math_Vec4();
+iron_math_RayCaster.m = new iron_math_Mat4(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
 iron_object_Animation.m1 = new iron_math_Mat4(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
 iron_object_Animation.m2 = new iron_math_Mat4(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0);
 iron_object_Animation.vpos = new iron_math_Vec4();
@@ -43688,16 +45662,30 @@ kha_Scheduler.timeWarpSaveTime = 10.0;
 kha_Scheduler.DIF_COUNT = 3;
 kha_Scheduler.maxframetime = 0.5;
 kha_Scheduler.startTime = 0;
-kha_Shaders.BLANK_mesh_fragData0 = "s1702:AAJfSW1hZ2VUZXh0dXJlX3NhbXBsZXIAAEltYWdlVGV4dHVyZQAAAERYQkOO6qkyHxkOmqj53Mum:bmwAQAAANQEAAAFAAAANAAAAPAAAAA8AQAAiAEAAFgEAABSREVGtAAAAAAAAAAAAAAAAgAAABwAAAAABP::AAEAAH8AAABcAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAHIAAAACAAAABQAAAAQAAAD:::::AAAAAAEAAAAMAAAAX0ltYWdlVGV4dHVyZV9zYW1wbGVyAEltYWdlVGV4dHVyZQBNaWNyb3NvZnQgKFIpIEhMU0wgU2hhZGVyIENvbXBpbGVyIDYuMy45NjAwLjE2Mzg0AKurq0lTR05EAAAAAgAAAAgAAAA4AAAAAAAAAAAAAAADAAAAAAAAAAMDAAA4AAAAAQAAAAAAAAADAAAAAQAAAAcHAABURVhDT09SRACrq6tPU0dORAAAAAIAAAAIAAAAOAAAAAAAAAAAAAAAAwAAAAAAAAAPAAAAOAAAAAEAAAAAAAAAAwAAAAEAAAAPAAAAU1ZfVGFyZ2V0AKurU0hEUsgCAABAAAAAsgAAAFoAAAMAYBAAAAAAAFgYAAQAcBAAAAAAAFVVAABiEAADMhAQAAAAAABiEAADchAQAAEAAABlAAAD8iAQAAAAAABlAAAD8iAQAAEAAABoAAACAwAAAEUAAAnyABAAAAAAAEYQEAAAAAAARn4QAAAAAAAAYBAAAAAAAAAAAAeCABAAAAAAADoAEAAAAAAAAUAAABe3UbkxAAAHggAQAAAAAAA6ABAAAAAAAAFAAABy%X8:DQAEAzoAEAAAAAAAEAAAB4IAEAAAAAAARhIQAAEAAABGEhAAAQAAAEQAAAWCABAAAAAAADoAEAAAAAAAOAAAB3IAEAABAAAA9g8QAAAAAAAmGRAAAQAAAC8AAAVyABAAAAAAAEYCEAAAAAAAOAAACnIAEAAAAAAARgIQAAAAAAACQAAAzcwMQM3MDEDNzAxAAAAAABkAAAVyIBAAAQAAAEYCEAAAAAAAAAAACRIAEAAAAAAAKgAQgIEAAAABAAAAGgAQgIEAAAABAAAAAAAACBIAEAAAAAAACgAQgIEAAAABAAAACgAQAAAAAAAOAAAHcgAQAAAAAABGAhAAAQAAAAYAEAAAAAAAAAAACzIAEAABAAAAZgoQgMEAAAAAAAAAAkAAAAAAgD8AAIA:AAAAAAAAAAAdAAAKcgAQAAIAAABGAhAAAAAAAAJAAAAAAAAAAAAAAAAAAAAAAAAANwAAD5IAEAAAAAAAVgkQAAIAAAACQAAAAACAPwAAAAAAAAAAAACAPwJAAAAAAIC:AAAAAAAAAAAAAIC:OAAAB5IAEAAAAAAABgwQAAAAAAAGBBAAAQAAADcAAAkyIBAAAAAAAAYAEAACAAAAlgUQAAAAAADGABAAAAAAADYAAAjCIBAAAAAAAAJAAAAAAAAAAAAAAM3MzD2AAIA9NgAABYIgEAABAAAAAUAAAHH9f0M%AAABU1RBVHQAAAAVAAAAAwAAAAAAAAAEAAAADgAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-kha_Shaders.BLANK_mesh_vertData0 = "s1822:A25vcgAAcG9zAAF0ZXgAAgEkR2xvYmFscwAAA3RleFVucGFjawAAAAAABAAAAAEBTgAQAAAALAAAAAMDV1ZQAEAAAABAAAAABAREWEJDHcNgM00VsBRM2D4e7Oi4GAEAAAAMBQAABQAAADQAAABcAQAAwAEAADACAACQBAAAUkRFRiABAAABAAAASAAAAAEAAAAcAAAAAAT%:wABAADsAAAAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAkR2xvYmFscwCrq6s8AAAAAwAAAGAAAACAAAAAAAAAAAAAAACoAAAAAAAAAAQAAAACAAAAtAAAAAAAAADEAAAAEAAAACwAAAACAAAAyAAAAAAAAADYAAAAQAAAAEAAAAACAAAA3AAAAAAAAAB0ZXhVbnBhY2sAq6sAAAMAAQABAAAAAAAAAAAATgCrqwMAAwADAAMAAAAAAAAAAABXVlAAAwADAAQABAAAAAAAAAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dOXAAAAAMAAAAIAAAAUAAAAAAAAAAAAAAAAwAAAAAAAAADAwAAUAAAAAEAAAAAAAAAAwAAAAEAAAAPDwAAUAAAAAIAAAAAAAAAAwAAAAIAAAADAwAAVEVYQ09PUkQAq6urT1NHTmgAAAADAAAACAAAAFAAAAAAAAAAAAAAAAMAAAAAAAAAAwwAAFAAAAABAAAAAAAAAAMAAAABAAAABwgAAFkAAAAAAAAAAQAAAAMAAAACAAAADwAAAFRFWENPT1JEAFNWX1Bvc2l0aW9uAKurq1NIRFJYAgAAQAABAJYAAABZAAAERo4gAAAAAAAIAAAAXwAAAzIQEAAAAAAAXwAAA:IQEAABAAAAXwAAAzIQEAACAAAAZQAAAzIgEAAAAAAAZQAAA3IgEAABAAAAZwAABPIgEAACAAAAAQAAAGgAAAICAAAAOAAACDIgEAAAAAAARhAQAAIAAAAGgCAAAAAAAAAAAAA2AAAFMgAQAAAAAABGEBAAAAAAADYAAAVCABAAAAAAADoQEAABAAAAEAAACBIAEAABAAAARgIQAAAAAABGgiAAAAAAAAEAAAAQAAAIIgAQAAEAAABGAhAAAAAAAEaCIAAAAAAAAgAAABAAAAhCABAAAQAAAEYCEAAAAAAARoIgAAAAAAADAAAAEAAABxIAEAAAAAAARgIQAAEAAABGAhAAAQAAAEQAAAUSABAAAAAAAAoAEAAAAAAAOAAAB3IgEAABAAAABgAQAAAAAABGAhAAAQAAADYAAAVyABAAAAAAAEYSEAABAAAANgAABYIAEAAAAAAAAUAAAAAAgD8RAAAIEgAQAAEAAABGDhAAAAAAAEaOIAAAAAAABgAAABEAAAgiABAAAQAAAEYOEAAAAAAARo4gAAAAAAAHAAAAAAAABxIAEAABAAAAGgAQAAEAAAAKABAAAQAAADYAAAWCIBAAAgAAABoAEAABAAAAOAAAB0IgEAACAAAACgAQAAEAAAABQAAAAAAAPxEAAAgSIBAAAgAAAEYOEAAAAAAARo4gAAAAAAAEAAAAEQAACCIgEAACAAAARg4QAAAAAABGjiAAAAAAAAUAAAA%AAABU1RBVHQAAAATAAAAAgAAAAAAAAAGAAAADQAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-kha_Shaders.BLANK_shadowmap_fragData0 = "s426:AAAARFhCQ4ETqlbuSbEtSQGO6SrzY7gBAAAAPAEAAAUAAAA0AAAAjAAAAJwAAACsAAAAwAAAAFJERUZQAAAAAAAAAAAAAAAAAAAAHAAAAAAE::8AAQAAHAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dOCAAAAAAAAAAIAAAAT1NHTggAAAAAAAAACAAAAFNIRFIMAAAAQAAAAAMAAAA%AAABU1RBVHQAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-kha_Shaders.BLANK_shadowmap_vertData0 = "s1111:AXBvcwAAASRHbG9iYWxzAAABTFdWUAAAAAAAQAAAAAQERFhCQ3xflQ:oR9:Lx6mX3k:DcrwBAAAAIAMAAAUAAAA0AAAAAAEAADQBAABoAQAApAIAAFJERUbEAAAAAQAAAEgAAAABAAAAHAAAAAAE:v8AAQAAkAAAADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAJEdsb2JhbHMAq6urPAAAAAEAAABgAAAAQAAAAAAAAAAAAAAAeAAAAAAAAABAAAAAAgAAAIAAAAAAAAAATFdWUACrq6sDAAMABAAEAAAAAAAAAAAATWljcm9zb2Z0IChSKSBITFNMIFNoYWRlciBDb21waWxlciA2LjMuOTYwMC4xNjM4NACrq0lTR04sAAAAAQAAAAgAAAAgAAAAAAAAAAAAAAADAAAAAAAAAA8HAABURVhDT09SRACrq6tPU0dOLAAAAAEAAAAIAAAAIAAAAAAAAAABAAAAAwAAAAAAAAAPAAAAU1ZfUG9zaXRpb24AU0hEUjQBAABAAAEATQAAAFkAAARGjiAAAAAAAAQAAABfAAADchAQAAAAAABnAAAE8iAQAAAAAAABAAAAaAAAAgIAAAA2AAAFcgAQAAAAAABGEhAAAAAAADYAAAWCABAAAAAAAAFAAAAAAIA:EQAACBIAEAABAAAARg4QAAAAAABGjiAAAAAAAAIAAAARAAAIIgAQAAEAAABGDhAAAAAAAEaOIAAAAAAAAwAAAAAAAAcSABAAAQAAABoAEAABAAAACgAQAAEAAAA2AAAFgiAQAAAAAAAaABAAAQAAADgAAAdCIBAAAAAAAAoAEAABAAAAAUAAAAAAAD8RAAAIEiAQAAAAAABGDhAAAAAAAEaOIAAAAAAAAAAAABEAAAgiIBAAAAAAAEYOEAAAAAAARo4gAAAAAAABAAAAPgAAAVNUQVR0AAAACgAAAAIAAAAAAAAAAgAAAAYAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-kha_Shaders.BLANK_translucent_fragData0 = "s4570:AANfSW1hZ2VUZXh0dXJlX3NhbXBsZXIAAEltYWdlVGV4dHVyZQAAJEdsb2JhbHMAAApjYXNEYXRhAAAAAABAAQAABAFzaGlycgBAAQAAcAAAAAQBcGFyYW1fUkdCALABAAAMAAAAAwFiYWNrZ3JvdW5kQ29sAMABAAAMAAAAAwFlbnZtYXBTdHJlbmd0aADMAQAABAAAAAEBc3VuRGlyANABAAAMAAAAAwFyZWNlaXZlU2hhZG93ANwBAAAEAAAAAQFleWUA4AEAAAwAAAADAXNoYWRvd3NCaWFzAOwBAAAEAAAAAQFzdW5Db2wA8AEAAAwAAAADAURYQkPbq:8pYZos8qw3qM3a%s61AQAAAGwMAAAFAAAANAAAANwCAAB8AwAAyAMAAPALAABSREVGoAIAAAEAAACoAAAAAwAAABwAAAAABP::AAEAAGsCAAB8AAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAJIAAAACAAAABQAAAAQAAAD:::::AAAAAAEAAAAMAAAAnwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAABfSW1hZ2VUZXh0dXJlX3NhbXBsZXIASW1hZ2VUZXh0dXJlACRHbG9iYWxzAJ8AAAAKAAAAwAAAAAACAAAAAAAAAAAAALABAAAAAAAAQAEAAAAAAAC4AQAAAAAAAMgBAABAAQAAcAAAAAIAAADQAQAAAAAAAOABAACwAQAADAAAAAAAAADsAQAAAAAAAPwBAADAAQAADAAAAAIAAADsAQAAAAAAAAoCAADMAQAABAAAAAIAAAAcAgAAAAAAACwCAADQAQAADAAAAAAAAADsAQAAAAAAADMCAADcAQAABAAAAAAAAABEAgAAAAAAAFQCAADgAQAADAAAAAAAAADsAQAAAAAAAFgCAADsAQAABAAAAAAAAAAcAgAAAAAAAGQCAADwAQAADAAAAAAAAADsAQAAAAAAAGNhc0RhdGEAAQADAAEABAAUAAAAAAAAAHNoaXJyAKurAQADAAEABAAHAAAAAAAAAHBhcmFtX1JHQgCrqwEAAwABAAMAAAAAAAAAAABiYWNrZ3JvdW5kQ29sAGVudm1hcFN0cmVuZ3RoAKurqwAAAwABAAEAAAAAAAAAAABzdW5EaXIAcmVjZWl2ZVNoYWRvdwCrq6sAAAEAAQABAAAAAAAAAAAAZXllAHNoYWRvd3NCaWFzAHN1bkNvbABNaWNyb3NvZnQgKFIpIEhMU0wgU2hhZGVyIENvbXBpbGVyIDYuMy45NjAwLjE2Mzg0AKurq0lTR06YAAAABQAAAAgAAACAAAAAAAAAAAAAAAADAAAAAAAAAAcAAACAAAAAAQAAAAAAAAADAAAAAQAAAAMDAACAAAAAAgAAAAAAAAADAAAAAgAAAAcHAACAAAAAAwAAAAAAAAADAAAAAwAAAAcAAACJAAAAAAAAAAEAAAADAAAABAAAAA8EAABURVhDT09SRABTVl9Qb3NpdGlvbgCrq6tPU0dORAAAAAIAAAAIAAAAOAAAAAAAAAAAAAAAAwAAAAAAAAAPAAAAOAAAAAEAAAAAAAAAAwAAAAEAAAAPAAAAU1ZfVGFyZ2V0AKurU0hEUiAIAABAAAAACAIAAFkAAARGjiAAAAAAAB0AAABaAAADAGAQAAAAAABYGAAEAHAQAAAAAABVVQAAYhAAAzIQEAABAAAAYhAAA3IQEAACAAAAZCAABEIQEAAEAAAAAQAAAGUAAAPyIBAAAAAAAGUAAAPyIBAAAQAAAGgAAAIFAAAARQAACfIAEAAAAAAARhAQAAEAAABGfhAAAAAAAABgEAAAAAAAAAAAB4IAEAAAAAAAOgAQAAAAAAABQAAAF7dRuRgAAAcSABAAAQAAADoAEAAAAAAAAUAAAAAAgD8NAAQDCgAQAAEAAAAQAAAHEgAQAAEAAABGEhAAAgAAAEYSEAACAAAARAAABRIAEAABAAAACgAQAAEAAAA4AAAHcgAQAAEAAAAGABAAAQAAAJYUEAACAAAALwAABXIAEAAAAAAARgIQAAAAAAA4AAAKcgAQAAAAAABGAhAAAAAAAAJAAADNzAxAzcwMQM3MDEAAAAAAGQAABXIAEAAAAAAARgIQAAAAAAA4AAALcgAQAAIAAABGgiAAAAAAABoAAAACQAAAhqvbPoar2z6Gq9s%AAAAADgAAAcyABAAAwAAAJYFEAABAAAAlgUQAAEAAAAyAAAKggAQAAEAAAAKABAAAQAAAAoAEAABAAAACgAQgEEAAAADAAAANgAABjIAEAAEAAAA5oogAAAAAAAYAAAANgAABkIAEAAEAAAACoAgAAAAAAAZAAAAOAAAB3IAEAADAAAAVgUQAAMAAABGAhAABAAAADgAAApyABAAAwAAAEYCEAADAAAAAkAAAHE9Pj9xPT4:cT0%PwAAAAAyAAAJcgAQAAIAAABGAhAAAgAAAPYPEAABAAAARgIQAAMAAAAyAAANcgAQAAIAAABGgiAAAAAAABQAAAACQAAAxt9iP8bfYj:G32I:AAAAAEYCEAACAAAAMgAADXIAEAACAAAARgIQgEEAAAAEAAAAAkAAACqnfT4qp30%Kqd9PgAAAABGAhAAAgAAADgAAAhyABAAAwAAAAYAEAABAAAARoIgAAAAAAAXAAAAOAAACnIAEAADAAAARgIQAAMAAAACQAAAhqtbP4arWz%Gq1s:AAAAADIAAApyABAAAgAAAEYCEAADAAAAVgUQgEEAAAABAAAARgIQAAIAAAA4AAAIcgAQAAMAAAAGABAAAQAAAJaHIAAAAAAAGQAAADgAAAdyABAAAwAAAKYKEAABAAAARgIQAAMAAAAyAAAMcgAQAAIAAABGAhAAAwAAAAJAAACGq1s:hqtbP4arWz8AAAAARgIQAAIAAAA4AAAJEgAQAAMAAAAaABCAQQAAAAEAAAA6gCAAAAAAABcAAAA4AAAJYgAQAAMAAABWBRCAQQAAAAEAAAAGgSAAAAAAABgAAAA4AAAHcgAQAAMAAACmChAAAQAAAEYCEAADAAAAMgAADHIAEAACAAAARgIQAAMAAAACQAAAhqtbP4arWz%Gq1s:AAAAAEYCEAACAAAAOAAACHIAEAADAAAABgAQAAEAAACWhyAAAAAAABYAAAAyAAAMcgAQAAIAAABGAhAAAwAAAAJAAABp:II:afyCP2n8gj8AAAAARgIQAAIAAAA4AAAJEgAQAAMAAAAaABCAQQAAAAEAAAA6gCAAAAAAABQAAAA4AAAJYgAQAAMAAABWBRCAQQAAAAEAAAAGgSAAAAAAABUAAAAyAAAMsgAQAAEAAABGCBAAAwAAAAJAAABp:II:afyCPwAAAABp:II:RggQAAIAAAA4AAAIMgAQAAIAAACmChAAAQAAAOaKIAAAAAAAFQAAADgAAAhCABAAAgAAACoAEAABAAAACoAgAAAAAAAWAAAAMgAADHIAEAABAAAARgIQAAIAAAACQAAAafyCP2n8gj9p:II:AAAAAEYDEAABAAAAOAAAC3IAEAACAAAARoIgAAAAAAAcAAAAAkAAAArXIz0K1yM9CtcjPQAAAAAyAAAJcgAQAAEAAABGAhAAAQAAAEYCEAAAAAAARgIQAAIAAAAyAAAKcgAQAAAAAABGAhAAAQAAAPaPIAAAAAAAHAAAAEYCEAAAAAAAOAAAB3IAEAAAAAAA9g8QAAAAAABGAhAAAAAAADgAAApyABAAAAAAAEYCEAAAAAAAAkAAAAAAAD8AAAA:AAAAPwAAAAA4AAAHEgAQAAEAAAA6ABAAAAAAAAFAAAAAACBBMwAABxIAEAABAAAACgAQAAEAAAABQAAAAACAPwAAAAcSABAAAQAAAAoAEAABAAAAAUAAAArXIzw4AAAHIgAQAAEAAAAKABAAAQAAAAoAEAABAAAAOAAABxIAEAABAAAAGgAQAAEAAAAKABAAAQAAADgAAAcSABAAAQAAAAoAEAABAAAAAUAAACC8vkwyAAAKIgAQAAEAAAAqEBCAQQAAAAQAAAABQAAAZmZmPwFAAAAAAIA:OAAAB0IAEAABAAAAGgAQAAEAAAAaABAAAQAAADgAAAciABAAAQAAACoAEAABAAAAGgAQAAEAAAA4AAAHEgAQAAEAAAAaABAAAQAAAAoAEAABAAAANAAABxIAEAABAAAACgAQAAEAAAABQAAACtcjPDMAAAcSABAAAQAAAAoAEAABAAAAAUAAAACAO0U4AAAHciAQAAAAAABGAhAAAAAAAAYAEAABAAAAOAAABxIgEAABAAAAOgAQAAAAAAAKABAAAQAAADYAAAWCIBAAAAAAADoAEAAAAAAANgAACOIgEAABAAAAAkAAAAAAAAAAAAAAAAAAAAAAgD8%AAABU1RBVHQAAAA8AAAABQAAAAAAAAAFAAAANQAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-kha_Shaders.BLANK_translucent_vertData0 = "s2251:A25vcgAAcG9zAAF0ZXgAAgEkR2xvYmFscwAABXRleFVucGFjawAAAAAABAAAAAEBVwAQAAAAQAAAAAQETgBQAAAALAAAAAMDV1ZQAIAAAABAAAAABARleWUAwAAAAAwAAAADAURYQkOxEGZoYylzCuAkqcmUUsEnAQAAADQGAAAFAAAANAAAAKQBAAAIAgAAqAIAALgFAABSREVGaAEAAAEAAABIAAAAAQAAABwAAAAABP7:AAEAADQBAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAACRHbG9iYWxzAKurqzwAAAAFAAAAYAAAANAAAAAAAAAAAAAAANgAAAAAAAAABAAAAAIAAADkAAAAAAAAAPQAAAAQAAAAQAAAAAIAAAD4AAAAAAAAAAgBAABQAAAALAAAAAIAAAAMAQAAAAAAABwBAACAAAAAQAAAAAIAAAD4AAAAAAAAACABAADAAAAADAAAAAIAAAAkAQAAAAAAAHRleFVucGFjawCrqwAAAwABAAEAAAAAAAAAAABXAKurAwADAAQABAAAAAAAAAAAAE4Aq6sDAAMAAwADAAAAAAAAAAAAV1ZQAGV5ZQABAAMAAQADAAAAAAAAAAAATWljcm9zb2Z0IChSKSBITFNMIFNoYWRlciBDb21waWxlciA2LjMuOTYwMC4xNjM4NACrq0lTR05cAAAAAwAAAAgAAABQAAAAAAAAAAAAAAADAAAAAAAAAAMDAABQAAAAAQAAAAAAAAADAAAAAQAAAA8PAABQAAAAAgAAAAAAAAADAAAAAgAAAAMDAABURVhDT09SRACrq6tPU0dOmAAAAAUAAAAIAAAAgAAAAAAAAAAAAAAAAwAAAAAAAAAHCAAAgAAAAAEAAAAAAAAAAwAAAAEAAAADDAAAgAAAAAIAAAAAAAAAAwAAAAIAAAAHCAAAgAAAAAMAAAAAAAAAAwAAAAMAAAAHCAAAiQAAAAAAAAABAAAAAwAAAAQAAAAPAAAAVEVYQ09PUkQAU1ZfUG9zaXRpb24Aq6urU0hEUggDAABAAAEAwgAAAFkAAARGjiAAAAAAAA0AAABfAAADMhAQAAAAAABfAAAD8hAQAAEAAABfAAADMhAQAAIAAABlAAADciAQAAAAAABlAAADMiAQAAEAAABlAAADciAQAAIAAABlAAADciAQAAMAAABnAAAE8iAQAAQAAAABAAAAaAAAAgMAAAA2AAAFcgAQAAAAAABGEhAAAQAAADYAAAWCABAAAAAAAAFAAAAAAIA:EQAACBIAEAABAAAARg4QAAAAAABGjiAAAAAAAAEAAAARAAAIIgAQAAEAAABGDhAAAAAAAEaOIAAAAAAAAgAAABEAAAhCABAAAQAAAEYOEAAAAAAARo4gAAAAAAADAAAAAAAACXIgEAAAAAAARgIQgEEAAAABAAAARoIgAAAAAAAMAAAANgAABXIgEAADAAAARgIQAAEAAAA4AAAIMiAQAAEAAABGEBAAAgAAAAaAIAAAAAAAAAAAADYAAAUyABAAAQAAAEYQEAAAAAAANgAABUIAEAABAAAAOhAQAAEAAAAQAAAIEgAQAAIAAABGAhAAAQAAAEaCIAAAAAAABQAAABAAAAgiABAAAgAAAEYCEAABAAAARoIgAAAAAAAGAAAAEAAACEIAEAACAAAARgIQAAEAAABGgiAAAAAAAAcAAAAQAAAHEgAQAAEAAABGAhAAAgAAAEYCEAACAAAARAAABRIAEAABAAAACgAQAAEAAAA4AAAHciAQAAIAAAAGABAAAQAAAEYCEAACAAAAEQAACBIAEAABAAAARg4QAAAAAABGjiAAAAAAAAoAAAARAAAIIgAQAAEAAABGDhAAAAAAAEaOIAAAAAAACwAAAAAAAAcSABAAAQAAABoAEAABAAAACgAQAAEAAAA2AAAFgiAQAAQAAAAaABAAAQAAADgAAAdCIBAABAAAAAoAEAABAAAAAUAAAAAAAD8RAAAIEiAQAAQAAABGDhAAAAAAAEaOIAAAAAAACAAAABEAAAgiIBAABAAAAEYOEAAAAAAARo4gAAAAAAAJAAAAPgAAAVNUQVR0AAAAGAAAAAMAAAAAAAAACAAAABEAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.Hex_mesh_fragData0 = "s1611:AAJfSW1hZ2VUZXh0dXJlX3NhbXBsZXIAAEltYWdlVGV4dHVyZQAAAERYQkMmi%:1eQMcqCohyxgirqX2AQAAAJAEAAAFAAAANAAAAPAAAAA8AQAAiAEAABQEAABSREVGtAAAAAAAAAAAAAAAAgAAABwAAAAABP::AAEAAH8AAABcAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAHIAAAACAAAABQAAAAQAAAD:::::AAAAAAEAAAAMAAAAX0ltYWdlVGV4dHVyZV9zYW1wbGVyAEltYWdlVGV4dHVyZQBNaWNyb3NvZnQgKFIpIEhMU0wgU2hhZGVyIENvbXBpbGVyIDYuMy45NjAwLjE2Mzg0AKurq0lTR05EAAAAAgAAAAgAAAA4AAAAAAAAAAAAAAADAAAAAAAAAAMDAAA4AAAAAQAAAAAAAAADAAAAAQAAAAcHAABURVhDT09SRACrq6tPU0dORAAAAAIAAAAIAAAAOAAAAAAAAAAAAAAAAwAAAAAAAAAPAAAAOAAAAAEAAAAAAAAAAwAAAAEAAAAPAAAAU1ZfVGFyZ2V0AKurU0hEUoQCAABAAAAAoQAAAFoAAAMAYBAAAAAAAFgYAAQAcBAAAAAAAFVVAABiEAADMhAQAAAAAABiEAADchAQAAEAAABlAAAD8iAQAAAAAABlAAAD8iAQAAEAAABoAAACAwAAABAAAAcSABAAAAAAAEYSEAABAAAARhIQAAEAAABEAAAFEgAQAAAAAAAKABAAAAAAADgAAAdyABAAAAAAAAYAEAAAAAAAJhkQAAEAAAAAAAAJggAQAAAAAAAqABCAgQAAAAAAAAAaABCAgQAAAAAAAAAAAAAIggAQAAAAAAAKABCAgQAAAAAAAAA6ABAAAAAAAA4AAAdyABAAAAAAAEYCEAAAAAAA9g8QAAAAAAAAAAALMgAQAAEAAABmChCAwQAAAAAAAAACQAAAAACAPwAAgD8AAAAAAAAAAB0AAApyABAAAgAAAEYCEAAAAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAA3AAAPkgAQAAAAAABWCRAAAgAAAAJAAAAAAIA:AAAAAAAAAAAAAIA:AkAAAAAAgL8AAAAAAAAAAAAAgL84AAAHkgAQAAAAAAAGDBAAAAAAAAYEEAABAAAANwAACTIgEAAAAAAABgAQAAIAAACWBRAAAAAAAMYAEAAAAAAANgAACMIgEAAAAAAAAkAAAAAAAAAAAAAAAACAPwAAAABFAAAJ8gAQAAAAAABGEBAAAAAAAEZ%EAAAAAAAAGAQAAAAAAAvAAAFcgAQAAAAAABGAhAAAAAAADgAAApyABAAAAAAAEYCEAAAAAAAAkAAAM3MDEDNzAxAzcwMQAAAAAAZAAAFciAQAAEAAABGAhAAAAAAADYAAAWCIBAAAQAAAAFAAAAAAH9DPgAAAVNUQVR0AAAAEgAAAAMAAAAAAAAABAAAAAwAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.Hex_mesh_vertData0 = "s1822:A25vcgAAcG9zAAF0ZXgAAgEkR2xvYmFscwAAA3RleFVucGFjawAAAAAABAAAAAEBTgAQAAAALAAAAAMDV1ZQAEAAAABAAAAABAREWEJDHcNgM00VsBRM2D4e7Oi4GAEAAAAMBQAABQAAADQAAABcAQAAwAEAADACAACQBAAAUkRFRiABAAABAAAASAAAAAEAAAAcAAAAAAT%:wABAADsAAAAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAkR2xvYmFscwCrq6s8AAAAAwAAAGAAAACAAAAAAAAAAAAAAACoAAAAAAAAAAQAAAACAAAAtAAAAAAAAADEAAAAEAAAACwAAAACAAAAyAAAAAAAAADYAAAAQAAAAEAAAAACAAAA3AAAAAAAAAB0ZXhVbnBhY2sAq6sAAAMAAQABAAAAAAAAAAAATgCrqwMAAwADAAMAAAAAAAAAAABXVlAAAwADAAQABAAAAAAAAAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dOXAAAAAMAAAAIAAAAUAAAAAAAAAAAAAAAAwAAAAAAAAADAwAAUAAAAAEAAAAAAAAAAwAAAAEAAAAPDwAAUAAAAAIAAAAAAAAAAwAAAAIAAAADAwAAVEVYQ09PUkQAq6urT1NHTmgAAAADAAAACAAAAFAAAAAAAAAAAAAAAAMAAAAAAAAAAwwAAFAAAAABAAAAAAAAAAMAAAABAAAABwgAAFkAAAAAAAAAAQAAAAMAAAACAAAADwAAAFRFWENPT1JEAFNWX1Bvc2l0aW9uAKurq1NIRFJYAgAAQAABAJYAAABZAAAERo4gAAAAAAAIAAAAXwAAAzIQEAAAAAAAXwAAA:IQEAABAAAAXwAAAzIQEAACAAAAZQAAAzIgEAAAAAAAZQAAA3IgEAABAAAAZwAABPIgEAACAAAAAQAAAGgAAAICAAAAOAAACDIgEAAAAAAARhAQAAIAAAAGgCAAAAAAAAAAAAA2AAAFMgAQAAAAAABGEBAAAAAAADYAAAVCABAAAAAAADoQEAABAAAAEAAACBIAEAABAAAARgIQAAAAAABGgiAAAAAAAAEAAAAQAAAIIgAQAAEAAABGAhAAAAAAAEaCIAAAAAAAAgAAABAAAAhCABAAAQAAAEYCEAAAAAAARoIgAAAAAAADAAAAEAAABxIAEAAAAAAARgIQAAEAAABGAhAAAQAAAEQAAAUSABAAAAAAAAoAEAAAAAAAOAAAB3IgEAABAAAABgAQAAAAAABGAhAAAQAAADYAAAVyABAAAAAAAEYSEAABAAAANgAABYIAEAAAAAAAAUAAAAAAgD8RAAAIEgAQAAEAAABGDhAAAAAAAEaOIAAAAAAABgAAABEAAAgiABAAAQAAAEYOEAAAAAAARo4gAAAAAAAHAAAAAAAABxIAEAABAAAAGgAQAAEAAAAKABAAAQAAADYAAAWCIBAAAgAAABoAEAABAAAAOAAAB0IgEAACAAAACgAQAAEAAAABQAAAAAAAPxEAAAgSIBAAAgAAAEYOEAAAAAAARo4gAAAAAAAEAAAAEQAACCIgEAACAAAARg4QAAAAAABGjiAAAAAAAAUAAAA%AAABU1RBVHQAAAATAAAAAgAAAAAAAAAGAAAADQAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.Hex_translucent_fragData0 = "s10403:AAVfSW1hZ2VUZXh0dXJlX3NhbXBsZXIAAF9zaGFkb3dNYXBfc2FtcGxlcgABSW1hZ2VUZXh0dXJlAABzaGFkb3dNYXAAASRHbG9iYWxzAAAJY2FzRGF0YQAAAAAAQAEAAAQBc2hpcnIAQAEAAHAAAAAEAWJhY2tncm91bmRDb2wAsAEAAAwAAAADAWVudm1hcFN0cmVuZ3RoALwBAAAEAAAAAQFzdW5EaXIAwAEAAAwAAAADAXJlY2VpdmVTaGFkb3cAzAEAAAQAAAABAWV5ZQDQAQAADAAAAAMBc2hhZG93c0JpYXMA3AEAAAQAAAABAXN1bkNvbADgAQAADAAAAAMBRFhCQwL6M3Tn3XaXY5chxn%0zUQBAAAAeB0AAAUAAAA0AAAAGAMAALgDAAAEBAAA:BwAAFJERUbcAgAAAQAAAAgBAAAFAAAAHAAAAAAE::8AAQAApwIAALwAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAA0gAAAAMAAAAAAAAAAAAAAAAAAAABAAAAAQAAAAIAAADlAAAAAgAAAAUAAAAEAAAA:::::wAAAAABAAAADAAAAPIAAAACAAAABQAAAAQAAAD:::::AQAAAAEAAAAMAAAA:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAABfSW1hZ2VUZXh0dXJlX3NhbXBsZXIAX3NoYWRvd01hcF9zYW1wbGVyAEltYWdlVGV4dHVyZQBzaGFkb3dNYXAAJEdsb2JhbHMAq6ur:AAAAAkAAAAgAQAA8AEAAAAAAAAAAAAA%AEAAAAAAABAAQAAAgAAAAACAAAAAAAAEAIAAEABAABwAAAAAgAAABgCAAAAAAAAKAIAALABAAAMAAAAAgAAADgCAAAAAAAASAIAALwBAAAEAAAAAgAAAFgCAAAAAAAAaAIAAMABAAAMAAAAAgAAADgCAAAAAAAAbwIAAMwBAAAEAAAAAgAAAIACAAAAAAAAkAIAANABAAAMAAAAAgAAADgCAAAAAAAAlAIAANwBAAAEAAAAAgAAAFgCAAAAAAAAoAIAAOABAAAMAAAAAgAAADgCAAAAAAAAY2FzRGF0YQABAAMAAQAEABQAAAAAAAAAc2hpcnIAq6sBAAMAAQAEAAcAAAAAAAAAYmFja2dyb3VuZENvbACrqwEAAwABAAMAAAAAAAAAAABlbnZtYXBTdHJlbmd0aACrAAADAAEAAQAAAAAAAAAAAHN1bkRpcgByZWNlaXZlU2hhZG93AKurqwAAAQABAAEAAAAAAAAAAABleWUAc2hhZG93c0JpYXMAc3VuQ29sAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6urSVNHTpgAAAAFAAAACAAAAIAAAAAAAAAAAAAAAAMAAAAAAAAABwcAAIAAAAABAAAAAAAAAAMAAAABAAAAAwMAAIAAAAACAAAAAAAAAAMAAAACAAAABwcAAIAAAAADAAAAAAAAAAMAAAADAAAABwcAAIkAAAAAAAAAAQAAAAMAAAAEAAAADwQAAFRFWENPT1JEAFNWX1Bvc2l0aW9uAKurq09TR05EAAAAAgAAAAgAAAA4AAAAAAAAAAAAAAADAAAAAAAAAA8AAAA4AAAAAQAAAAAAAAADAAAAAQAAAA8AAABTVl9UYXJnZXQAq6tTSERS8BgAAEAAAAA8BgAANRgAABIAAAAAAIA:AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAIA:WQgABEaOIAAAAAAAHwAAAFoAAAMAYBAAAAAAAFoIAAMAYBAAAQAAAFgYAAQAcBAAAAAAAFVVAABYGAAEAHAQAAEAAABVVQAAYhAAA3IQEAAAAAAAYhAAAzIQEAABAAAAYhAAA3IQEAACAAAAYhAAA3IQEAADAAAAZCAABEIQEAAEAAAAAQAAAGUAAAPyIBAAAAAAAGUAAAPyIBAAAQAAAGgAAAIIAAAARQAACfIAEAAAAAAARhAQAAEAAABGfhAAAAAAAABgEAAAAAAAAAAAB4IAEAAAAAAAOgAQAAAAAAABQAAAF7dRuRgAAAcSABAAAQAAADoAEAAAAAAAAUAAAAAAgD8NAAQDCgAQAAEAAAAQAAAHEgAQAAEAAABGEhAAAgAAAEYSEAACAAAARAAABRIAEAABAAAACgAQAAEAAAA4AAAHcgAQAAEAAAAGABAAAQAAAEYSEAACAAAALwAABXIAEAAAAAAARgIQAAAAAAA4AAAKcgAQAAAAAABGAhAAAAAAAAJAAADNzAxAzcwMQM3MDEAAAAAAGQAABXIAEAAAAAAARgIQAAAAAAAQAAAHggAQAAEAAABGEhAAAAAAAEYSEAAAAAAARAAABYIAEAABAAAAOgAQAAEAAAA4AAAHcgAQAAIAAAD2DxAAAQAAAEYSEAAAAAAAEAAAB4IAEAACAAAARgIQAAEAAABGAhAAAgAAADQAAAeCABAAAgAAADoAEAACAAAAAUAAAAAAAAA4AAALcgAQAAMAAABGgiAAAAAAABoAAAACQAAAhqvbPoar2z6Gq9s%AAAAADgAAAcyABAABAAAACYKEAABAAAAJgoQAAEAAAAyAAAKggAQAAMAAAAaABAAAQAAABoAEAABAAAACgAQgEEAAAAEAAAANgAABjIAEAAFAAAA5oogAAAAAAAYAAAANgAABkIAEAAFAAAACoAgAAAAAAAZAAAAOAAAB3IAEAAEAAAAVgUQAAQAAABGAhAABQAAADgAAApyABAABAAAAEYCEAAEAAAAAkAAAHE9Pj9xPT4:cT0%PwAAAAAyAAAJcgAQAAMAAABGAhAAAwAAAPYPEAADAAAARgIQAAQAAAAyAAANcgAQAAMAAABGgiAAAAAAABQAAAACQAAAxt9iP8bfYj:G32I:AAAAAEYCEAADAAAAMgAADXIAEAADAAAARgIQgEEAAAAFAAAAAkAAACqnfT4qp30%Kqd9PgAAAABGAhAAAwAAADgAAAhyABAABAAAAFYFEAABAAAARoIgAAAAAAAXAAAAOAAACnIAEAAEAAAARgIQAAQAAAACQAAAhqtbP4arWz%Gq1s:AAAAADIAAApyABAAAwAAAEYCEAAEAAAApgoQgEEAAAABAAAARgIQAAMAAAA4AAAIcgAQAAQAAABWBRAAAQAAAJaHIAAAAAAAGQAAADgAAAdyABAABAAAAAYAEAABAAAARgIQAAQAAAAyAAAMcgAQAAMAAABGAhAABAAAAAJAAACGq1s:hqtbP4arWz8AAAAARgIQAAMAAAA4AAAJEgAQAAQAAAAqABCAQQAAAAEAAAA6gCAAAAAAABcAAAA4AAAJYgAQAAQAAACmChCAQQAAAAEAAAAGgSAAAAAAABgAAAA4AAAHcgAQAAQAAAAGABAAAQAAAEYCEAAEAAAAMgAADHIAEAADAAAARgIQAAQAAAACQAAAhqtbP4arWz%Gq1s:AAAAAEYCEAADAAAAOAAACHIAEAAEAAAAVgUQAAEAAACWhyAAAAAAABYAAAAyAAAMcgAQAAMAAABGAhAABAAAAAJAAABp:II:afyCP2n8gj8AAAAARgIQAAMAAAA4AAAJEgAQAAQAAAAqABCAQQAAAAEAAAA6gCAAAAAAABQAAAA4AAAJYgAQAAQAAACmChCAQQAAAAEAAAAGgSAAAAAAABUAAAAyAAAMcgAQAAMAAABGAhAABAAAAAJAAABp:II:afyCP2n8gj8AAAAARgIQAAMAAAA4AAAIMgAQAAQAAAAGABAAAQAAAOaKIAAAAAAAFQAAADgAAAhCABAABAAAAAoAEAABAAAACoAgAAAAAAAWAAAAMgAADHIAEAADAAAARgIQAAQAAAACQAAAafyCP2n8gj9p:II:AAAAAEYCEAADAAAAOAAAC3IAEAAEAAAARoIgAAAAAAAbAAAAAkAAAArXIz0K1yM9CtcjPQAAAAAyAAAJcgAQAAMAAABGAhAAAwAAAEYCEAAAAAAARgIQAAQAAAA4AAAIcgAQAAMAAABGAhAAAwAAAPaPIAAAAAAAGwAAADIAAApyABAABAAAAEYSEAAAAAAA9g8QAAEAAABGgiAAAAAAABwAAAAQAAAHggAQAAEAAABGAhAABAAAAEYCEAAEAAAARAAABYIAEAABAAAAOgAQAAEAAAA4AAAHcgAQAAQAAAD2DxAAAQAAAEYCEAAEAAAAEAAACIIAEAABAAAARgIQAAEAAABGgiAAAAAAABwAAAAQAAAHggAQAAMAAABGAhAAAQAAAEYCEAAEAAAAEAAABxIAEAACAAAARgIQAAIAAABGAhAABAAAAB8ABAQ6gCAAAAAAABwAAAA4AAAIcgAQAAEAAABGAhAAAQAAAPaPIAAAAAAAHQAAADIAAAxyABAAAQAAAEYCEAABAAAAAkAAAAAAIEEAACBBAAAgQQAAAABGEhAAAwAAAAAAAAlyABAABAAAAEYCEIBBAAAAAQAAAEaCIAAAAAAAHQAAABAAAAciABAAAgAAAEYCEAAEAAAARgIQAAQAAABLAAAFIgAQAAIAAAAaABAAAgAAADEAAAjyABAABAAAAEaOIAAAAAAAEAAAAFYFEAACAAAAAQAACvIAEAAEAAAARg4QAAQAAAACQAAAAACAPwAAgD8AAIA:AACAPxEAAApCABAAAgAAAAJAAAAAAIA:AACAPwAAgD8AAIA:Rg4QAAQAAAAbAAAFQgAQAAIAAAAqABAAAgAAACkAAAcSABAABAAAACoAEAACAAAAAUAAAAIAAAAeAAAK4gAQAAQAAAAGABAABAAAAAJAAAAAAAAAAQAAAAIAAAADAAAAOAAACfIAEAAFAAAAVgUQAAEAAABGjiAEAAAAABoAEAAEAAAAMgAAC:IAEAAFAAAABgAQAAEAAABGjiAEAAAAAAoAEAAEAAAARg4QAAUAAAAyAAAL8gAQAAUAAACmChAAAQAAAEaOIAQAAAAAKgAQAAQAAABGDhAABQAAAAAAAAnyABAABQAAAEYOEAAFAAAARo4gBAAAAAA6ABAABAAAAA4AAAfiABAABAAAAAYJEAAFAAAA9g8QAAUAAAAxAAAHEgAQAAUAAAABQAAAAAAAADoAEAAFAAAAAAAACYIAEAAEAAAAOgAQAAQAAAA6gCCAQQAAAAAAAAAdAAAAAAAACvIAEAAGAAAAlgkQAAQAAAACQAAAAACAuQAAgLoAAIC5AAAAAEYAAAsiABAABQAAAEYAEAAGAAAABnAQAAEAAAAAYBAAAQAAADoAEAAEAAAARgAAC0IAEAAFAAAA5goQAAYAAAAGcBAAAQAAAABgEAABAAAAOgAQAAQAAAAAAAAK8gAQAAYAAACWCRAABAAAAAJAAAAAAIC5AACAOgAAAAAAAIC6RgAAC4IAEAAFAAAARgAQAAYAAAAGcBAAAQAAAABgEAABAAAAOgAQAAQAAABGAAALEgAQAAYAAADmChAABgAAAAZwEAABAAAAAGAQAAEAAAA6ABAABAAAAEYAAAsiABAABgAAAJYFEAAEAAAABnAQAAEAAAAAYBAAAQAAADoAEAAEAAAAAAAACvIAEAAHAAAAlgkQAAQAAAACQAAAAAAAAAAAgDoAAIA5AACAukYAAAtCABAABgAAAEYAEAAHAAAABnAQAAEAAAAAYBAAAQAAADoAEAAEAAAARgAAC4IAEAAGAAAA5goQAAcAAAAGcBAAAQAAAABgEAABAAAAOgAQAAQAAAAAAAAK8gAQAAcAAACWCRAABAAAAAJAAAAAAIA5AAAAAAAAgDkAAIA6RgAACyIAEAAEAAAARgAQAAcAAAAGcBAAAQAAAABgEAABAAAAOgAQAAQAAABGAAALQgAQAAQAAADmChAABwAAAAZwEAABAAAAAGAQAAEAAAA6ABAABAAAAB8ABAMKABAABQAAAAAAAAeCABAABAAAACoAEAAFAAAAGgAQAAUAAAAAAAAHggAQAAQAAAA6ABAABQAAADoAEAAEAAAAAAAAB4IAEAAEAAAACgAQAAYAAAA6ABAABAAAAAAAAAeCABAABAAAABoAEAAGAAAAOgAQAAQAAAAAAAAHggAQAAQAAAAqABAABgAAADoAEAAEAAAAAAAAB4IAEAAEAAAAOgAQAAYAAAA6ABAABAAAAAAAAAciABAABAAAABoAEAAEAAAAOgAQAAQAAAAAAAAHIgAQAAQAAAAqABAABAAAABoAEAAEAAAAOAAAByIAEAAEAAAAGgAQAAQAAAABQAAAOY7jPRIAAAE2AAAFIgAQAAQAAAABQAAAAACAPxUAAAERAAAJQgAQAAQAAABGjiAAAAAAABAAAABGnpAAKgAQAAIAAAAfAAADKgAQAAIAAAA2AAAFggAQAAQAAAAqABAABAAAABIAAAEeAAAHEgAQAAUAAAAqABAAAgAAAAFAAAD:::::EQAACRIAEAAFAAAARo4gAAAAAAAQAAAARp6QAAoAEAAFAAAAAAAACIIAEAAEAAAAKgAQAAQAAAAKABCAQQAAAAUAAAAVAAABAAAACCIAEAACAAAAGgAQgEEAAAACAAAAKgAQAAQAAAAOAAAHIgAQAAIAAAAaABAAAgAAADoAEAAEAAAAHQAAB0IAEAAEAAAAAUAAAJqZGT4aABAAAgAAACcAAAdCABAAAgAAACoAEAACAAAAAUAAAAMAAAABAAAHQgAQAAIAAAAqABAAAgAAACoAEAAEAAAAHgAAB0IAEAAEAAAACgAQAAQAAAABQAAABAAAAB4AAApyABAABQAAAKYKEAAEAAAAAkAAAAEAAAACAAAAAwAAAAAAAAA4AAAJ8gAQAAYAAABWBRAAAQAAAEaOIAQAAAAACgAQAAUAAAAyAAAM8gAQAAYAAAAGABAAAQAAAEaOIAYAAAAABAAAAAoAEAAEAAAARg4QAAYAAAAyAAAL8gAQAAYAAACmChAAAQAAAEaOIAQAAAAAGgAQAAUAAABGDhAABgAAAAAAAAnyABAABQAAAEYOEAAGAAAARo4gBAAAAAAqABAABQAAAA4AAAdyABAAAQAAAEYCEAAFAAAA9g8QAAUAAAAAAAAJQgAQAAEAAAAqABAAAQAAADqAIIBBAAAAAAAAAB0AAAAAAAAK8gAQAAYAAABGBBAAAQAAAAJAAAAAAIC5AACAugAAgLkAAAAARgAACxIAEAAEAAAARgAQAAYAAAAGcBAAAQAAAABgEAABAAAAKgAQAAEAAABGAAALQgAQAAQAAADmChAABgAAAAZwEAABAAAAAGAQAAEAAAAqABAAAQAAAAAAAAryABAABgAAAEYEEAABAAAAAkAAAAAAgLkAAIA6AAAAAAAAgLpGAAALggAQAAQAAABGABAABgAAAAZwEAABAAAAAGAQAAEAAAAqABAAAQAAAEYAAAsSABAABQAAAOYKEAAGAAAABnAQAAEAAAAAYBAAAQAAACoAEAABAAAARgAACyIAEAAFAAAARgAQAAEAAAAGcBAAAQAAAABgEAABAAAAKgAQAAEAAAAAAAAK8gAQAAYAAABGBBAAAQAAAAJAAAAAAAAAAACAOgAAgDkAAIC6RgAAC0IAEAAFAAAARgAQAAYAAAAGcBAAAQAAAABgEAABAAAAKgAQAAEAAABGAAALEgAQAAYAAADmChAABgAAAAZwEAABAAAAAGAQAAEAAAAqABAAAQAAAAAAAAryABAABwAAAEYEEAABAAAAAkAAAAAAgDkAAAAAAACAOQAAgDpGAAALEgAQAAEAAABGABAABwAAAAZwEAABAAAAAGAQAAEAAAAqABAAAQAAAEYAAAsiABAAAQAAAOYKEAAHAAAABnAQAAEAAAAAYBAAAQAAACoAEAABAAAAHwAEAyoAEAACAAAAMQAAB0IAEAABAAAAAUAAAAAAAAA6ABAABQAAAB8ABAMqABAAAQAAAAAAAAdCABAAAQAAACoAEAAEAAAACgAQAAQAAAAAAAAHQgAQAAEAAAA6ABAABAAAACoAEAABAAAAAAAAB0IAEAABAAAACgAQAAUAAAAqABAAAQAAAAAAAAdCABAAAQAAABoAEAAFAAAAKgAQAAEAAAAAAAAHQgAQAAEAAAAqABAABQAAACoAEAABAAAAAAAAB0IAEAABAAAACgAQAAYAAAAqABAAAQAAAAAAAAcSABAAAQAAAAoAEAABAAAAKgAQAAEAAAAAAAAHEgAQAAEAAAAaABAAAQAAAAoAEAABAAAAOAAABxIAEAABAAAACgAQAAEAAAABQAAAOY7jPRIAAAE2AAAFEgAQAAEAAAABQAAAAACAPxUAAAE4IAAHIgAQAAEAAAAaABAAAgAAAAFAAABVVdVAMgAACUIAEAABAAAAGgAQAAEAAAABQAAAAAAAwAFAAAAAAEBAOAAAByIAEAABAAAAGgAQAAEAAAAaABAAAQAAADgAAAciABAAAQAAABoAEAABAAAAKgAQAAEAAAAAAAAIQgAQAAEAAAAKABCAQQAAAAEAAAAaABAABAAAADIAAAkSABAAAQAAABoAEAABAAAAKgAQAAEAAAAKABAAAQAAABUAAAE3AAAJEgAQAAEAAAAqABAAAgAAAAoAEAABAAAAGgAQAAQAAAASAAABNgAABRIAEAABAAAAAUAAAAAAgD8VAAABNAAAByIAEAABAAAAOgAQAAEAAAABQAAAAAAAADIAAAlCABAAAQAAAAoAEAACAAAAAUAAAFnAscABQAAADHbfwDgAAAdCABAAAQAAAAoAEAACAAAAKgAQAAEAAAAZAAAFQgAQAAEAAAAqABAAAQAAADIAAAlCABAAAQAAACoAEAABAAAAAUAAAI:CdT8BQAAACtcjPTgAAAcSABAAAgAAADoAEAADAAAAOgAQAAMAAAAyAAAJEgAQAAIAAAAKABAAAgAAAAFAAABy%X%:AUAAAAAAgD84AAAHEgAQAAIAAAAKABAAAgAAAAoAEAACAAAADgAABxIAEAACAAAAAUAAAESCBTgKABAAAgAAADIAAAmCABAAAQAAADoAEAABAAAAAUAAAKRwfT8BQAAAC9cjPDIAAAkiABAAAgAAADoAEAACAAAAAUAAAKRwfT8BQAAAC9cjPDgAAAeCABAAAQAAADoAEAABAAAAGgAQAAIAAAAOAAAKggAQAAEAAAACQAAAAACAPwAAgD8AAIA:AACAPzoAEAABAAAANiAABYIAEAABAAAAOgAQAAEAAAA4AAAHggAQAAEAAAA6ABAAAQAAAAoAEAACAAAAOAAAB0IAEAABAAAAOgAQAAEAAAAqABAAAQAAADgAAAdCABAAAQAAACoAEAABAAAAAUAAAAAAgD4yAAAJcgAQAAAAAABGAhAAAAAAAFYFEAABAAAApgoQAAEAAAA4AAAIcgAQAAAAAABGAhAAAAAAAEaCIAAAAAAAHgAAADgAAAriABAAAQAAAAYJEAADAAAAAkAAAAAAAAAAAAA:AAAAPwAAAD8yAAAJcgAQAAAAAABGAhAAAAAAAAYAEAABAAAAlgcQAAEAAAA4AAAHcgAQAAAAAAD2DxAAAAAAAEYCEAAAAAAAOAAABxIAEAABAAAAOgAQAAAAAAABQAAAAAAgQTMAAAcSABAAAQAAAAoAEAABAAAAAUAAAAAAgD8AAAAHEgAQAAEAAAAKABAAAQAAAAFAAAAK1yM8OAAAByIAEAABAAAACgAQAAEAAAAKABAAAQAAADgAAAcSABAAAQAAABoAEAABAAAACgAQAAEAAAA4AAAHEgAQAAEAAAAKABAAAQAAAAFAAAAgvL5MMgAACiIAEAABAAAAKhAQgEEAAAAEAAAAAUAAAGZmZj8BQAAAAACAPzgAAAdCABAAAQAAABoAEAABAAAAGgAQAAEAAAA4AAAHIgAQAAEAAAAqABAAAQAAABoAEAABAAAAOAAABxIAEAABAAAAGgAQAAEAAAAKABAAAQAAADQAAAcSABAAAQAAAAoAEAABAAAAAUAAAArXIzwzAAAHEgAQAAEAAAAKABAAAQAAAAFAAAAAgDtFOAAAB3IgEAAAAAAARgIQAAAAAAAGABAAAQAAADgAAAcSIBAAAQAAADoAEAAAAAAACgAQAAEAAAA2AAAFgiAQAAAAAAA6ABAAAAAAADYAAAjiIBAAAQAAAAJAAAAAAAAAAAAAAAAAAAAAAIA:PgAAAVNUQVR0AAAAxQAAAAgAAAAEAAAABwAAAI8AAAAGAAAAAgAAAAYAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAABIAAAAAAAAAAAAAAAkAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.Hex_translucent_vertData0 = "s2251:A25vcgAAcG9zAAF0ZXgAAgEkR2xvYmFscwAABXRleFVucGFjawAAAAAABAAAAAEBVwAQAAAAQAAAAAQETgBQAAAALAAAAAMDV1ZQAIAAAABAAAAABARleWUAwAAAAAwAAAADAURYQkOxEGZoYylzCuAkqcmUUsEnAQAAADQGAAAFAAAANAAAAKQBAAAIAgAAqAIAALgFAABSREVGaAEAAAEAAABIAAAAAQAAABwAAAAABP7:AAEAADQBAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAACRHbG9iYWxzAKurqzwAAAAFAAAAYAAAANAAAAAAAAAAAAAAANgAAAAAAAAABAAAAAIAAADkAAAAAAAAAPQAAAAQAAAAQAAAAAIAAAD4AAAAAAAAAAgBAABQAAAALAAAAAIAAAAMAQAAAAAAABwBAACAAAAAQAAAAAIAAAD4AAAAAAAAACABAADAAAAADAAAAAIAAAAkAQAAAAAAAHRleFVucGFjawCrqwAAAwABAAEAAAAAAAAAAABXAKurAwADAAQABAAAAAAAAAAAAE4Aq6sDAAMAAwADAAAAAAAAAAAAV1ZQAGV5ZQABAAMAAQADAAAAAAAAAAAATWljcm9zb2Z0IChSKSBITFNMIFNoYWRlciBDb21waWxlciA2LjMuOTYwMC4xNjM4NACrq0lTR05cAAAAAwAAAAgAAABQAAAAAAAAAAAAAAADAAAAAAAAAAMDAABQAAAAAQAAAAAAAAADAAAAAQAAAA8PAABQAAAAAgAAAAAAAAADAAAAAgAAAAMDAABURVhDT09SRACrq6tPU0dOmAAAAAUAAAAIAAAAgAAAAAAAAAAAAAAAAwAAAAAAAAAHCAAAgAAAAAEAAAAAAAAAAwAAAAEAAAADDAAAgAAAAAIAAAAAAAAAAwAAAAIAAAAHCAAAgAAAAAMAAAAAAAAAAwAAAAMAAAAHCAAAiQAAAAAAAAABAAAAAwAAAAQAAAAPAAAAVEVYQ09PUkQAU1ZfUG9zaXRpb24Aq6urU0hEUggDAABAAAEAwgAAAFkAAARGjiAAAAAAAA0AAABfAAADMhAQAAAAAABfAAAD8hAQAAEAAABfAAADMhAQAAIAAABlAAADciAQAAAAAABlAAADMiAQAAEAAABlAAADciAQAAIAAABlAAADciAQAAMAAABnAAAE8iAQAAQAAAABAAAAaAAAAgMAAAA2AAAFcgAQAAAAAABGEhAAAQAAADYAAAWCABAAAAAAAAFAAAAAAIA:EQAACBIAEAABAAAARg4QAAAAAABGjiAAAAAAAAEAAAARAAAIIgAQAAEAAABGDhAAAAAAAEaOIAAAAAAAAgAAABEAAAhCABAAAQAAAEYOEAAAAAAARo4gAAAAAAADAAAAAAAACXIgEAAAAAAARgIQgEEAAAABAAAARoIgAAAAAAAMAAAANgAABXIgEAADAAAARgIQAAEAAAA4AAAIMiAQAAEAAABGEBAAAgAAAAaAIAAAAAAAAAAAADYAAAUyABAAAQAAAEYQEAAAAAAANgAABUIAEAABAAAAOhAQAAEAAAAQAAAIEgAQAAIAAABGAhAAAQAAAEaCIAAAAAAABQAAABAAAAgiABAAAgAAAEYCEAABAAAARoIgAAAAAAAGAAAAEAAACEIAEAACAAAARgIQAAEAAABGgiAAAAAAAAcAAAAQAAAHEgAQAAEAAABGAhAAAgAAAEYCEAACAAAARAAABRIAEAABAAAACgAQAAEAAAA4AAAHciAQAAIAAAAGABAAAQAAAEYCEAACAAAAEQAACBIAEAABAAAARg4QAAAAAABGjiAAAAAAAAoAAAARAAAIIgAQAAEAAABGDhAAAAAAAEaOIAAAAAAACwAAAAAAAAcSABAAAQAAABoAEAABAAAACgAQAAEAAAA2AAAFgiAQAAQAAAAaABAAAQAAADgAAAdCIBAABAAAAAoAEAABAAAAAUAAAAAAAD8RAAAIEiAQAAQAAABGDhAAAAAAAEaOIAAAAAAACAAAABEAAAgiIBAABAAAAEYOEAAAAAAARo4gAAAAAAAJAAAAPgAAAVNUQVR0AAAAGAAAAAMAAAAAAAAACAAAABEAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 kha_Shaders.blur_edge_pass_fragData0 = "s13251:AAVfZ2J1ZmZlcjBfc2FtcGxlcgAAX3RleF9zYW1wbGVyAAFnYnVmZmVyMAAAdGV4AAEkR2xvYmFscwAAAWRpckludgAAAAAACAAAAAIBRFhCQ6asAbvxZssaHmdcanwduC8BAAAAhCYAAAUAAAA0AAAArAEAAOABAAAUAgAACCYAAFJERUZwAQAAAQAAAPQAAAAFAAAAHAAAAAAE::8AAQAAPAEAALwAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAzgAAAAMAAAAAAAAAAAAAAAAAAAABAAAAAQAAAAAAAADbAAAAAgAAAAUAAAAEAAAA:::::wAAAAABAAAADAAAAOQAAAACAAAABQAAAAQAAAD:::::AQAAAAEAAAAMAAAA6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAABfZ2J1ZmZlcjBfc2FtcGxlcgBfdGV4X3NhbXBsZXIAZ2J1ZmZlcjAAdGV4ACRHbG9iYWxzAKurq%gAAAABAAAADAEAABAAAAAAAAAAAAAAACQBAAAAAAAACAAAAAIAAAAsAQAAAAAAAGRpckludgCrAQADAAEAAgAAAAAAAAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dOLAAAAAEAAAAIAAAAIAAAAAAAAAAAAAAAAwAAAAAAAAADAwAAVEVYQ09PUkQAq6urT1NHTiwAAAABAAAACAAAACAAAAAAAAAAAAAAAAMAAAAAAAAAAQ4AAFNWX1RhcmdldACrq1NIRFLsIwAAQAAAAPsIAABZAAAERo4gAAAAAAABAAAAWgAAAwBgEAAAAAAAWgAAAwBgEAABAAAAWBgABABwEAAAAAAAVVUAAFgYAAQAcBAAAQAAAFVVAABiEAADMhAQAAAAAABlAAADEiAQAAAAAABoAAACBgAAAEgAAAvyABAAAAAAAEYQEAAAAAAARn4QAAEAAAAAYBAAAQAAAAFAAAAAAAAAAAAACGIAEAAAAAAABhEQAAAAAAAGgSAAAAAAAAAAAABIAAAL8gAQAAEAAACWBRAAAAAAAEZ%EAAAAAAAAGAQAAAAAAABQAAAAAAAAEgAAAvyABAAAgAAAJYFEAAAAAAARn4QAAEAAAAAYBAAAQAAAAFAAAAAAAAAHQAACmIAEAAAAAAABgEQAAEAAAACQAAAAAAAAAAAAAAAAAAAAAAAADcAAA9iABAAAAAAAFYGEAAAAAAAAkAAAAAAAAAAAIA:AACAPwAAAAACQAAAAAAAAAAAgL8AAIC:AAAAAAAAAAviABAAAgAAAAYBEIDBAAAAAQAAAAJAAAAAAAAAAACAPwAAgD8AAIA:OAAAB2IAEAAAAAAAVgYQAAAAAACmCxAAAgAAAAAAAAhCABAAAwAAABoAEIDBAAAAAQAAABoAEAACAAAAHQAAB4IAEAAAAAAAKgAQAAMAAAABQAAAAAAAADcAAAkyABAAAwAAAPYPEAAAAAAARgAQAAEAAACWBRAAAAAAABAAAAciABAAAAAAAEYCEAADAAAARgIQAAMAAABEAAAFIgAQAAAAAAAaABAAAAAAADgAAAfiABAAAAAAAFYFEAAAAAAABgkQAAMAAABIAAAL8gAQAAEAAABGEBAAAAAAAEZ%EAAAAAAAAGAQAAAAAAABQAAAAAAAAB0AAArCABAAAQAAAAYEEAABAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAA3AAAPwgAQAAEAAACmDhAAAQAAAAJAAAAAAAAAAAAAAAAAgD8AAIA:AkAAAAAAAAAAAAAAAACAvwAAgL8AAAAL4gAQAAIAAAAGARCAwQAAAAEAAAACQAAAAAAAAAAAgD8AAIA:AACAPzgAAAfCABAAAQAAAKYOEAABAAAApg4QAAIAAAAAAAAIQgAQAAMAAAAaABCAwQAAAAEAAAAaABAAAgAAAB0AAAciABAAAgAAACoAEAADAAAAAUAAAAAAAAA3AAAJMgAQAAMAAABWBRAAAgAAAEYAEAABAAAA5goQAAEAAAAQAAAHEgAQAAEAAABGAhAAAwAAAEYCEAADAAAARAAABRIAEAABAAAACgAQAAEAAAA4AAAHcgAQAAEAAAAGABAAAQAAAEYCEAADAAAAEAAAByIAEAAAAAAAlgcQAAAAAABGAhAAAQAAAB0AAAciABAAAAAAABoAEAAAAAAAAUAAADMzcz8BAAAHQgAQAAAAAAAaABAAAAAAAAFAAAC7ewA%OAAAB0IAEAAAAAAAKgAQAAAAAAAKABAAAgAAADIAAAkSABAAAAAAAAoAEAAAAAAAAUAAAPTABz4qABAAAAAAAAAAAAnCABAAAAAAAAYUEAAAAAAABoQggEEAAAAAAAAAAAAAAEgAAAvyABAAAgAAAOYKEAAAAAAARn4QAAAAAAAAYBAAAAAAAAFAAAAAAAAASAAAC:IAEAADAAAA5goQAAAAAABGfhAAAQAAAABgEAABAAAAAUAAAAAAAAAdAAAKwgAQAAAAAAAGBBAAAgAAAAJAAAAAAAAAAAAAAAAAAAAAAAAANwAAD%IAEAAAAAAAVg4QAAAAAAACQAAAAAAAAFgehD4AAIA:AACAPwJAAAAAAAAA9MAHPgAAgL8AAIC:AAAAC%IAEAADAAAABgEQgMEAAAACAAAAAkAAAAAAAAAAAIA:AACAPwAAgD84AAAHwgAQAAAAAACmDhAAAAAAAKYOEAADAAAAAAAACEIAEAAEAAAAGgAQgMEAAAACAAAAGgAQAAMAAAAdAAAHggAQAAEAAAAqABAABAAAAAFAAAAAAAAANwAACTIAEAAEAAAA9g8QAAEAAABGABAAAgAAAOYKEAAAAAAAEAAAB0IAEAAAAAAARgIQAAQAAABGAhAABAAAAEQAAAVCABAAAAAAACoAEAAAAAAAOAAAB3IAEAACAAAApgoQAAAAAABGAhAABAAAABAAAAdCABAAAAAAAEYCEAACAAAARgIQAAEAAAAdAAAHQgAQAAAAAAAqABAAAAAAAAFAAAAzM3M:AQAAB0IAEAAAAAAAKgAQAAAAAAABQAAAu3sAPjIAAAkSABAAAAAAAAoAEAADAAAAKgAQAAAAAAAKABAAAAAAAAAAAAciABAAAAAAACoAEAAAAAAAGgAQAAAAAAAyAAANwgAQAAAAAAAGhCAAAAAAAAAAAAACQAAAAAAAAAAAAAAAAABAAAAAQAYUEAAAAAAASAAAC:IAEAACAAAA5goQAAAAAABGfhAAAAAAAABgEAAAAAAAAUAAAAAAAABIAAAL8gAQAAMAAADmChAAAAAAAEZ%EAABAAAAAGAQAAEAAAABQAAAAAAAAB0AAArCABAAAAAAAAYEEAACAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAA3AAAPwgAQAAAAAACmDhAAAAAAAAJAAAAAAAAAAAAAAAAAgD8AAIA:AkAAAAAAAAAAAAAAAACAvwAAgL8AAAAL4gAQAAMAAAAGARCAwQAAAAIAAAACQAAAAAAAAAAAgD8AAIA:AACAPzgAAAfCABAAAAAAAKYOEAAAAAAApg4QAAMAAAAAAAAIQgAQAAQAAAAaABCAwQAAAAIAAAAaABAAAwAAAB0AAAeCABAAAQAAACoAEAAEAAAAAUAAAAAAAAA3AAAJMgAQAAQAAAD2DxAAAQAAAEYAEAACAAAA5goQAAAAAAAQAAAHQgAQAAAAAABGAhAABAAAAEYCEAAEAAAARAAABUIAEAAAAAAAKgAQAAAAAAA4AAAHcgAQAAIAAACmChAAAAAAAEYCEAAEAAAAEAAAB0IAEAAAAAAARgIQAAIAAABGAhAAAQAAAB0AAAdCABAAAAAAACoAEAAAAAAAAUAAADMzcz8BAAAHQgAQAAAAAAAqABAAAAAAAAFAAAAW2tk9MgAACRIAEAAAAAAACgAQAAMAAAAqABAAAAAAAAoAEAAAAAAAAAAAByIAEAAAAAAAKgAQAAAAAAAaABAAAAAAADIAAA7CABAAAAAAAAaEIIBBAAAAAAAAAAAAAAACQAAAAAAAAAAAAAAAAABAAAAAQAYUEAAAAAAASAAAC:IAEAACAAAA5goQAAAAAABGfhAAAAAAAABgEAAAAAAAAUAAAAAAAABIAAAL8gAQAAMAAADmChAAAAAAAEZ%EAABAAAAAGAQAAEAAAABQAAAAAAAAB0AAArCABAAAAAAAAYEEAACAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAA3AAAPwgAQAAAAAACmDhAAAAAAAAJAAAAAAAAAAAAAAAAAgD8AAIA:AkAAAAAAAAAAAAAAAACAvwAAgL8AAAAL4gAQAAMAAAAGARCAwQAAAAIAAAACQAAAAAAAAAAAgD8AAIA:AACAPzgAAAfCABAAAAAAAKYOEAAAAAAApg4QAAMAAAAAAAAIQgAQAAQAAAAaABCAwQAAAAIAAAAaABAAAwAAAB0AAAeCABAAAQAAACoAEAAEAAAAAUAAAAAAAAA3AAAJMgAQAAQAAAD2DxAAAQAAAEYAEAACAAAA5goQAAAAAAAQAAAHQgAQAAAAAABGAhAABAAAAEYCEAAEAAAARAAABUIAEAAAAAAAKgAQAAAAAAA4AAAHcgAQAAIAAACmChAAAAAAAEYCEAAEAAAAEAAAB0IAEAAAAAAARgIQAAIAAABGAhAAAQAAAB0AAAdCABAAAAAAACoAEAAAAAAAAUAAADMzcz8BAAAHQgAQAAAAAAAqABAAAAAAAAFAAAAW2tk9MgAACRIAEAAAAAAACgAQAAMAAAAqABAAAAAAAAoAEAAAAAAAAAAAByIAEAAAAAAAKgAQAAAAAAAaABAAAAAAADIAAA3yABAAAgAAAEaEIAAAAAAAAAAAAAJAAAAAAEBAAABAQAAAgEAAAIBARhQQAAAAAABIAAAL8gAQAAMAAABGABAAAgAAAEZ%EAAAAAAAAGAQAAAAAAABQAAAAAAAAB0AAArCABAAAAAAAAYEEAADAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAA3AAAPwgAQAAAAAACmDhAAAAAAAAJAAAAAAAAAAAAAAAAAgD8AAIA:AkAAAAAAAAAAAAAAAACAvwAAgL8AAAALcgAQAAQAAABGABCAwQAAAAMAAAACQAAAAACAPwAAgD8AAIA:AAAAADgAAAfCABAAAAAAAKYOEAAAAAAAVgkQAAQAAAAAAAAIQgAQAAQAAAAaABCAwQAAAAMAAAAKABAABAAAAB0AAAeCABAAAQAAACoAEAAEAAAAAUAAAAAAAAA3AAAJMgAQAAQAAAD2DxAAAQAAAEYAEAADAAAA5goQAAAAAAAQAAAHQgAQAAAAAABGAhAABAAAAEYCEAAEAAAARAAABUIAEAAAAAAAKgAQAAAAAAA4AAAHcgAQAAMAAACmChAAAAAAAEYCEAAEAAAAEAAAB0IAEAAAAAAARgIQAAMAAABGAhAAAQAAAB0AAAdCABAAAAAAACoAEAAAAAAAAUAAADMzcz8BAAAHQgAQAAAAAAAqABAAAAAAAAFAAAD8b6U9SAAAC:IAEAADAAAARgAQAAIAAABGfhAAAQAAAABgEAABAAAAAUAAAAAAAAAyAAAJEgAQAAAAAAAKABAAAwAAACoAEAAAAAAACgAQAAAAAAAAAAAHIgAQAAAAAAAqABAAAAAAABoAEAAAAAAAMgAADvIAEAADAAAARoQggEEAAAAAAAAAAAAAAAJAAAAAAEBAAABAQAAAgEAAAIBARhQQAAAAAABIAAAL8gAQAAQAAABGABAAAwAAAEZ%EAAAAAAAAGAQAAAAAAABQAAAAAAAAB0AAArCABAAAAAAAAYEEAAEAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAA3AAAPwgAQAAAAAACmDhAAAAAAAAJAAAAAAAAAAAAAAAAAgD8AAIA:AkAAAAAAAAAAAAAAAACAvwAAgL8AAAALcgAQAAUAAABGABCAwQAAAAQAAAACQAAAAACAPwAAgD8AAIA:AAAAADgAAAfCABAAAAAAAKYOEAAAAAAAVgkQAAUAAAAAAAAIQgAQAAUAAAAaABCAwQAAAAQAAAAKABAABQAAAB0AAAeCABAAAQAAACoAEAAFAAAAAUAAAAAAAAA3AAAJMgAQAAUAAAD2DxAAAQAAAEYAEAAEAAAA5goQAAAAAAAQAAAHQgAQAAAAAABGAhAABQAAAEYCEAAFAAAARAAABUIAEAAAAAAAKgAQAAAAAAA4AAAHcgAQAAQAAACmChAAAAAAAEYCEAAFAAAAEAAAB0IAEAAAAAAARgIQAAQAAABGAhAAAQAAAB0AAAdCABAAAAAAACoAEAAAAAAAAUAAADMzcz8BAAAHQgAQAAAAAAAqABAAAAAAAAFAAAD8b6U9SAAAC:IAEAAEAAAARgAQAAMAAABGfhAAAQAAAABgEAABAAAAAUAAAAAAAAAyAAAJEgAQAAAAAAAKABAABAAAACoAEAAAAAAACgAQAAAAAAAAAAAHIgAQAAAAAAAqABAAAAAAABoAEAAAAAAASAAAC:IAEAAEAAAA5goQAAIAAABGfhAAAAAAAABgEAAAAAAAAUAAAAAAAABIAAAL8gAQAAIAAADmChAAAgAAAEZ%EAABAAAAAGAQAAEAAAABQAAAAAAAAB0AAArCABAAAAAAAAYEEAAEAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAA3AAAPwgAQAAAAAACmDhAAAAAAAAJAAAAAAAAAAAAAAAAAgD8AAIA:AkAAAAAAAAAAAAAAAACAvwAAgL8AAAAL4gAQAAIAAAAGARCAwQAAAAQAAAACQAAAAAAAAAAAgD8AAIA:AACAPzgAAAfCABAAAAAAAKYOEAAAAAAApg4QAAIAAAAAAAAIQgAQAAUAAAAaABCAwQAAAAQAAAAaABAAAgAAAB0AAAeCABAAAQAAACoAEAAFAAAAAUAAAAAAAAA3AAAJMgAQAAUAAAD2DxAAAQAAAEYAEAAEAAAA5goQAAAAAAAQAAAHQgAQAAAAAABGAhAABQAAAEYCEAAFAAAARAAABUIAEAAAAAAAKgAQAAAAAAA4AAAH4gAQAAIAAACmChAAAAAAAAYJEAAFAAAAEAAAB0IAEAAAAAAAlgcQAAIAAABGAhAAAQAAAB0AAAdCABAAAAAAACoAEAAAAAAAAUAAADMzcz8BAAAHQgAQAAAAAAAqABAAAAAAAAFAAABAE2E9MgAACRIAEAAAAAAACgAQAAIAAAAqABAAAAAAAAoAEAAAAAAAAAAAByIAEAAAAAAAKgAQAAAAAAAaABAAAAAAAEgAAAvyABAAAgAAAOYKEAADAAAARn4QAAAAAAAAYBAAAAAAAAFAAAAAAAAASAAAC:IAEAADAAAA5goQAAMAAABGfhAAAQAAAABgEAABAAAAAUAAAAAAAAAdAAAKwgAQAAAAAAAGBBAAAgAAAAJAAAAAAAAAAAAAAAAAAAAAAAAANwAAD8IAEAAAAAAApg4QAAAAAAACQAAAAAAAAAAAAAAAAIA:AACAPwJAAAAAAAAAAAAAAAAAgL8AAIC:AAAAC%IAEAADAAAABgEQgMEAAAACAAAAAkAAAAAAAAAAAIA:AACAPwAAgD84AAAHwgAQAAAAAACmDhAAAAAAAKYOEAADAAAAAAAACEIAEAAEAAAAGgAQgMEAAAACAAAAGgAQAAMAAAAdAAAHggAQAAEAAAAqABAABAAAAAFAAAAAAAAANwAACTIAEAAEAAAA9g8QAAEAAABGABAAAgAAAOYKEAAAAAAAEAAAB0IAEAAAAAAARgIQAAQAAABGAhAABAAAAEQAAAVCABAAAAAAACoAEAAAAAAAOAAAB3IAEAACAAAApgoQAAAAAABGAhAABAAAABAAAAdCABAAAAAAAEYCEAACAAAARgIQAAEAAAAdAAAHQgAQAAAAAAAqABAAAAAAAAFAAAAzM3M:AQAAB0IAEAAAAAAAKgAQAAAAAAABQAAAQBNhPTIAAAkSABAAAAAAAAoAEAADAAAAKgAQAAAAAAAKABAAAAAAAAAAAAciABAAAAAAACoAEAAAAAAAGgAQAAAAAAAyAAAN8gAQAAIAAABGhCAAAAAAAAAAAAACQAAAAACgQAAAoEAAAMBAAADAQEYUEAAAAAAASAAAC:IAEAADAAAARgAQAAIAAABGfhAAAAAAAABgEAAAAAAAAUAAAAAAAAAdAAAKwgAQAAAAAAAGBBAAAwAAAAJAAAAAAAAAAAAAAAAAAAAAAAAANwAAD8IAEAAAAAAApg4QAAAAAAACQAAAAAAAAAAAAAAAAIA:AACAPwJAAAAAAAAAAAAAAAAAgL8AAIC:AAAAC3IAEAAEAAAARgAQgMEAAAADAAAAAkAAAAAAgD8AAIA:AACAPwAAAAA4AAAHwgAQAAAAAACmDhAAAAAAAFYJEAAEAAAAAAAACEIAEAAEAAAAGgAQgMEAAAADAAAACgAQAAQAAAAdAAAHggAQAAEAAAAqABAABAAAAAFAAAAAAAAANwAACTIAEAAEAAAA9g8QAAEAAABGABAAAwAAAOYKEAAAAAAAEAAAB0IAEAAAAAAARgIQAAQAAABGAhAABAAAAEQAAAVCABAAAAAAACoAEAAAAAAAOAAAB3IAEAADAAAApgoQAAAAAABGAhAABAAAABAAAAdCABAAAAAAAEYCEAADAAAARgIQAAEAAAAdAAAHQgAQAAAAAAAqABAAAAAAAAFAAAAzM3M:AQAAB0IAEAAAAAAAKgAQAAAAAAABQAAAbCQJPUgAAAvyABAAAwAAAEYAEAACAAAARn4QAAEAAAAAYBAAAQAAAAFAAAAAAAAAMgAACRIAEAAAAAAACgAQAAMAAAAqABAAAAAAAAoAEAAAAAAAAAAAByIAEAAAAAAAKgAQAAAAAAAaABAAAAAAADIAAA7yABAAAwAAAEaEIIBBAAAAAAAAAAAAAAACQAAAAACgQAAAoEAAAMBAAADAQEYUEAAAAAAASAAAC:IAEAAEAAAARgAQAAMAAABGfhAAAAAAAABgEAAAAAAAAUAAAAAAAAAdAAAKwgAQAAAAAAAGBBAABAAAAAJAAAAAAAAAAAAAAAAAAAAAAAAANwAAD8IAEAAAAAAApg4QAAAAAAACQAAAAAAAAAAAAAAAAIA:AACAPwJAAAAAAAAAAAAAAAAAgL8AAIC:AAAAC3IAEAAFAAAARgAQgMEAAAAEAAAAAkAAAAAAgD8AAIA:AACAPwAAAAA4AAAHwgAQAAAAAACmDhAAAAAAAFYJEAAFAAAAAAAACEIAEAAFAAAAGgAQgMEAAAAEAAAACgAQAAUAAAAdAAAHggAQAAEAAAAqABAABQAAAAFAAAAAAAAANwAACTIAEAAFAAAA9g8QAAEAAABGABAABAAAAOYKEAAAAAAAEAAAB0IAEAAAAAAARgIQAAUAAABGAhAABQAAAEQAAAVCABAAAAAAACoAEAAAAAAAOAAAB3IAEAAEAAAApgoQAAAAAABGAhAABQAAABAAAAdCABAAAAAAAEYCEAAEAAAARgIQAAEAAAAdAAAHQgAQAAAAAAAqABAAAAAAAAFAAAAzM3M:AQAAB0IAEAAAAAAAKgAQAAAAAAABQAAAbCQJPUgAAAvyABAABAAAAEYAEAADAAAARn4QAAEAAAAAYBAAAQAAAAFAAAAAAAAAMgAACRIAEAAAAAAACgAQAAQAAAAqABAAAAAAAAoAEAAAAAAAAAAAByIAEAAAAAAAKgAQAAAAAAAaABAAAAAAAEgAAAvyABAABAAAAOYKEAACAAAARn4QAAAAAAAAYBAAAAAAAAFAAAAAAAAASAAAC:IAEAACAAAA5goQAAIAAABGfhAAAQAAAABgEAABAAAAAUAAAAAAAAAdAAAKwgAQAAAAAAAGBBAABAAAAAJAAAAAAAAAAAAAAAAAAAAAAAAANwAAD8IAEAAAAAAApg4QAAAAAAACQAAAAAAAAAAAAAAAAIA:AACAPwJAAAAAAAAAAAAAAAAAgL8AAIC:AAAAC%IAEAACAAAABgEQgMEAAAAEAAAAAkAAAAAAAAAAAIA:AACAPwAAgD84AAAHwgAQAAAAAACmDhAAAAAAAKYOEAACAAAAAAAACEIAEAAFAAAAGgAQgMEAAAAEAAAAGgAQAAIAAAAdAAAHggAQAAEAAAAqABAABQAAAAFAAAAAAAAANwAACTIAEAAFAAAA9g8QAAEAAABGABAABAAAAOYKEAAAAAAAEAAAB0IAEAAAAAAARgIQAAUAAABGAhAABQAAAEQAAAVCABAAAAAAACoAEAAAAAAAOAAAB%IAEAACAAAApgoQAAAAAAAGCRAABQAAABAAAAdCABAAAAAAAJYHEAACAAAARgIQAAEAAAAdAAAHQgAQAAAAAAAqABAAAAAAAAFAAAAzM3M:AQAAB0IAEAAAAAAAKgAQAAAAAAABQAAAdLWVPDIAAAkSABAAAAAAAAoAEAACAAAAKgAQAAAAAAAKABAAAAAAAAAAAAciABAAAAAAACoAEAAAAAAAGgAQAAAAAABIAAAL8gAQAAIAAADmChAAAwAAAEZ%EAAAAAAAAGAQAAAAAAABQAAAAAAAAEgAAAvyABAAAwAAAOYKEAADAAAARn4QAAEAAAAAYBAAAQAAAAFAAAAAAAAAHQAACsIAEAAAAAAABgQQAAIAAAACQAAAAAAAAAAAAAAAAAAAAAAAADcAAA:CABAAAAAAAKYOEAAAAAAAAkAAAAAAAAAAAAAAAACAPwAAgD8CQAAAAAAAAAAAAAAAAIC:AACAvwAAAAviABAAAwAAAAYBEIDBAAAAAgAAAAJAAAAAAAAAAACAPwAAgD8AAIA:OAAAB8IAEAAAAAAApg4QAAAAAACmDhAAAwAAAAAAAAhCABAABAAAABoAEIDBAAAAAgAAABoAEAADAAAAHQAAB4IAEAABAAAAKgAQAAQAAAABQAAAAAAAADcAAAkyABAABAAAAPYPEAABAAAARgAQAAIAAADmChAAAAAAABAAAAdCABAAAAAAAEYCEAAEAAAARgIQAAQAAABEAAAFQgAQAAAAAAAqABAAAAAAADgAAAdyABAAAgAAAKYKEAAAAAAARgIQAAQAAAAQAAAHQgAQAAAAAABGAhAAAgAAAEYCEAABAAAAHQAAB0IAEAAAAAAAKgAQAAAAAAABQAAAMzNzPwEAAAdCABAAAAAAACoAEAAAAAAAAUAAAHS1lTwyAAAJEgAQAAAAAAAKABAAAwAAACoAEAAAAAAACgAQAAAAAAAAAAAHIgAQAAAAAAAqABAAAAAAABoAEAAAAAAAMgAADcIAEAAAAAAABoQgAAAAAAAAAAAAAkAAAAAAAAAAAAAAAADgQAAA4EAGFBAAAAAAAEgAAAvyABAAAgAAAOYKEAAAAAAARn4QAAAAAAAAYBAAAAAAAAFAAAAAAAAASAAAC:IAEAADAAAA5goQAAAAAABGfhAAAQAAAABgEAABAAAAAUAAAAAAAAAdAAAKwgAQAAAAAAAGBBAAAgAAAAJAAAAAAAAAAAAAAAAAAAAAAAAANwAAD8IAEAAAAAAApg4QAAAAAAACQAAAAAAAAAAAAAAAAIA:AACAPwJAAAAAAAAAAAAAAAAAgL8AAIC:AAAAC%IAEAADAAAABgEQgMEAAAACAAAAAkAAAAAAAAAAAIA:AACAPwAAgD84AAAHwgAQAAAAAACmDhAAAAAAAKYOEAADAAAAAAAACEIAEAAEAAAAGgAQgMEAAAACAAAAGgAQAAMAAAAdAAAHggAQAAEAAAAqABAABAAAAAFAAAAAAAAANwAACTIAEAAEAAAA9g8QAAEAAABGABAAAgAAAOYKEAAAAAAAEAAAB0IAEAAAAAAARgIQAAQAAABGAhAABAAAAEQAAAVCABAAAAAAACoAEAAAAAAAOAAAB3IAEAACAAAApgoQAAAAAABGAhAABAAAABAAAAdCABAAAAAAAEYCEAACAAAARgIQAAEAAAAdAAAHQgAQAAAAAAAqABAAAAAAAAFAAAAzM3M:AQAAB0IAEAAAAAAAKgAQAAAAAAABQAAA6V8SPDIAAAkSABAAAAAAAAoAEAADAAAAKgAQAAAAAAAKABAAAAAAAAAAAAciABAAAAAAACoAEAAAAAAAGgAQAAAAAAAyAAAOwgAQAAAAAAAGhCCAQQAAAAAAAAAAAAAAAkAAAAAAAAAAAAAAAADgQAAA4EAGFBAAAAAAAEgAAAvyABAAAgAAAOYKEAAAAAAARn4QAAAAAAAAYBAAAAAAAAFAAAAAAAAASAAAC:IAEAADAAAA5goQAAAAAABGfhAAAQAAAABgEAABAAAAAUAAAAAAAAAdAAAKwgAQAAAAAAAGBBAAAgAAAAJAAAAAAAAAAAAAAAAAAAAAAAAANwAAD8IAEAAAAAAApg4QAAAAAAACQAAAAAAAAAAAAAAAAIA:AACAPwJAAAAAAAAAAAAAAAAAgL8AAIC:AAAAC%IAEAADAAAABgEQgMEAAAACAAAAAkAAAAAAAAAAAIA:AACAPwAAgD84AAAHwgAQAAAAAACmDhAAAAAAAKYOEAADAAAAAAAACEIAEAAEAAAAGgAQgMEAAAACAAAAGgAQAAMAAAAdAAAHggAQAAEAAAAqABAABAAAAAFAAAAAAAAANwAACTIAEAAEAAAA9g8QAAEAAABGABAAAgAAAOYKEAAAAAAAEAAAB0IAEAAAAAAARgIQAAQAAABGAhAABAAAAEQAAAVCABAAAAAAACoAEAAAAAAAOAAAB3IAEAACAAAApgoQAAAAAABGAhAABAAAABAAAAdCABAAAAAAAEYCEAACAAAARgIQAAEAAAAdAAAHQgAQAAAAAAAqABAAAAAAAAFAAAAzM3M:AQAAB0IAEAAAAAAAKgAQAAAAAAABQAAA6V8SPDIAAAkSABAAAAAAAAoAEAADAAAAKgAQAAAAAAAKABAAAAAAAAAAAAciABAAAAAAACoAEAAAAAAAGgAQAAAAAAAOAAAHEiAQAAAAAAAKABAAAAAAABoAEAAAAAAAPgAAAVNUQVR0AAAABgEAAAYAAAAAAAAAAgAAALsAAAAAAAAADgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgAAAAAAAAAAAAAAAAAAAAAAAAAeAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 kha_Shaders.compositor_pass_fragData0 = "s1224:AAJfdGV4X3NhbXBsZXIAAHRleAAAAERYQkObE1kYN0AGXWtz2Skb6AN7AQAAAIADAAAFAAAANAAAANwAAAAQAQAARAEAAAQDAABSREVGoAAAAAAAAAAAAAAAAgAAABwAAAAABP::AAEAAG0AAABcAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAGkAAAACAAAABQAAAAQAAAD:::::AAAAAAEAAAAMAAAAX3RleF9zYW1wbGVyAHRleABNaWNyb3NvZnQgKFIpIEhMU0wgU2hhZGVyIENvbXBpbGVyIDYuMy45NjAwLjE2Mzg0AKtJU0dOLAAAAAEAAAAIAAAAIAAAAAAAAAAAAAAAAwAAAAAAAAADAwAAVEVYQ09PUkQAq6urT1NHTiwAAAABAAAACAAAACAAAAAAAAAAAAAAAAMAAAAAAAAADwAAAFNWX1RhcmdldACrq1NIRFK4AQAAQAAAAG4AAABaAAADAGAQAAAAAABYGAAEAHAQAAAAAABVVQAAYhAAAzIQEAAAAAAAZQAAA:IgEAAAAAAAaAAAAgMAAABIAAAL8gAQAAAAAABGEBAAAAAAAEZ%EAAAAAAAAGAQAAAAAAABQAAAAAAAAAAAAApyABAAAAAAAEYCEAAAAAAAAkAAAG8Sg7tvEoO7bxKDuwAAAAA2AAAFgiAQAAAAAAA6ABAAAAAAADQAAApyABAAAAAAAEYCEAAAAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAAyAAAPcgAQAAEAAABGAhAAAAAAAAJAAABmZsZAZmbGQGZmxkAAAAAAAkAAAAAAAD8AAAA:AAAAPwAAAAA4AAAHcgAQAAEAAABGAhAAAAAAAEYCEAABAAAAMgAAD3IAEAACAAAARgIQAAAAAAACQAAAZmbGQGZmxkBmZsZAAAAAAAJAAACamdk:mpnZP5qZ2T8AAAAAMgAADHIAEAAAAAAARgIQAAAAAABGAhAAAgAAAAJAAACPwnU9j8J1PY:CdT0AAAAADgAAB3IgEAAAAAAARgIQAAEAAABGAhAAAAAAAD4AAAFTVEFUdAAAAAoAAAADAAAAAAAAAAIAAAAHAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 kha_Shaders.compositor_pass_vertData0 = "s779:AXBvcwAAAABEWEJD7F0vBgrwXt7WrnoVcnvrCQEAAABAAgAABQAAADQAAACMAAAAwAAAABgBAADEAQAAUkRFRlAAAAAAAAAAAAAAAAAAAAAcAAAAAAT%:wABAAAcAAAATWljcm9zb2Z0IChSKSBITFNMIFNoYWRlciBDb21waWxlciA2LjMuOTYwMC4xNjM4NACrq0lTR04sAAAAAQAAAAgAAAAgAAAAAAAAAAAAAAADAAAAAAAAAAMDAABURVhDT09SRACrq6tPU0dOUAAAAAIAAAAIAAAAOAAAAAAAAAAAAAAAAwAAAAAAAAADDAAAQQAAAAAAAAABAAAAAwAAAAEAAAAPAAAAVEVYQ09PUkQAU1ZfUG9zaXRpb24Aq6urU0hEUqQAAABAAAEAKQAAAF8AAAMyEBAAAAAAAGUAAAMyIBAAAAAAAGcAAATyIBAAAQAAAAEAAAAyAAAPMiAQAAAAAABGEBAAAAAAAAJAAAAAAAA:AAAAvwAAAAAAAAAAAkAAAAAAAD8AAAA:AAAAAAAAAAA2AAAFMiAQAAEAAABGEBAAAAAAADYAAAjCIBAAAQAAAAJAAAAAAAAAAAAAAAAAAD8AAIA:PgAAAVNUQVR0AAAABAAAAAAAAAAAAAAAAwAAAAEAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 kha_Shaders.deferred_light_fragData0 = "s11918:AAtfZ2J1ZmZlcjBfc2FtcGxlcgAAX2didWZmZXIxX3NhbXBsZXIAAV9nYnVmZmVyRF9zYW1wbGVyAAJfc3Nhb3RleF9zYW1wbGVyAANfc2hhZG93TWFwX3NhbXBsZXIABGdidWZmZXIwAABnYnVmZmVyMQABZ2J1ZmZlckQAAnNzYW90ZXgAA3NoYWRvd01hcAAEJEdsb2JhbHMAAApjYXNEYXRhAAAAAABAAQAABAFzaGlycgBAAQAAcAAAAAQBZXllALABAAAMAAAAAwFleWVMb29rAMABAAAMAAAAAwFjYW1lcmFQcm9qANABAAAIAAAAAgFiYWNrZ3JvdW5kQ29sAOABAAAMAAAAAwFlbnZtYXBTdHJlbmd0aADsAQAABAAAAAEBc3VuRGlyAPABAAAMAAAAAwFzaGFkb3dzQmlhcwD8AQAABAAAAAEBc3VuQ29sAAACAAAMAAAAAwFEWEJDnRTHH4PWmiTkFZmwhxDZsAEAAACMIQAABQAAADQAAAA0BAAAgAQAALQEAAAQIQAAUkRFRvgDAAABAAAADAIAAAsAAAAcAAAAAAT::wABAADGAwAAfAEAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAACOAQAAAwAAAAAAAAAAAAAAAAAAAAEAAAABAAAAAAAAAKABAAADAAAAAAAAAAAAAAAAAAAAAgAAAAEAAAAAAAAAsgEAAAMAAAAAAAAAAAAAAAAAAAADAAAAAQAAAAAAAADDAQAAAwAAAAAAAAAAAAAAAAAAAAQAAAABAAAAAgAAANYBAAACAAAABQAAAAQAAAD:::::AAAAAAEAAAAMAAAA3wEAAAIAAAAFAAAABAAAAP::::8BAAAAAQAAAAwAAADoAQAAAgAAAAUAAAAEAAAA:::::wIAAAABAAAADAAAAPEBAAACAAAABQAAAAQAAAD:::::AwAAAAEAAAAMAAAA%QEAAAIAAAAFAAAABAAAAP::::8EAAAAAQAAAAwAAAADAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAF9nYnVmZmVyMF9zYW1wbGVyAF9nYnVmZmVyMV9zYW1wbGVyAF9nYnVmZmVyRF9zYW1wbGVyAF9zc2FvdGV4X3NhbXBsZXIAX3NoYWRvd01hcF9zYW1wbGVyAGdidWZmZXIwAGdidWZmZXIxAGdidWZmZXJEAHNzYW90ZXgAc2hhZG93TWFwACRHbG9iYWxzAAMCAAAKAAAAJAIAABACAAAAAAAAAAAAABQDAAAAAAAAQAEAAAIAAAAcAwAAAAAAACwDAABAAQAAcAAAAAIAAAA0AwAAAAAAAEQDAACwAQAADAAAAAIAAABIAwAAAAAAAFgDAADAAQAADAAAAAIAAABIAwAAAAAAAGADAADQAQAACAAAAAIAAABsAwAAAAAAAHwDAADgAQAADAAAAAIAAABIAwAAAAAAAIoDAADsAQAABAAAAAIAAACcAwAAAAAAAKwDAADwAQAADAAAAAIAAABIAwAAAAAAALMDAAD8AQAABAAAAAIAAACcAwAAAAAAAL8DAAAAAgAADAAAAAIAAABIAwAAAAAAAGNhc0RhdGEAAQADAAEABAAUAAAAAAAAAHNoaXJyAKurAQADAAEABAAHAAAAAAAAAGV5ZQABAAMAAQADAAAAAAAAAAAAZXllTG9vawBjYW1lcmFQcm9qAKsBAAMAAQACAAAAAAAAAAAAYmFja2dyb3VuZENvbABlbnZtYXBTdHJlbmd0aACrq6sAAAMAAQABAAAAAAAAAAAAc3VuRGlyAHNoYWRvd3NCaWFzAHN1bkNvbABNaWNyb3NvZnQgKFIpIEhMU0wgU2hhZGVyIENvbXBpbGVyIDYuMy45NjAwLjE2Mzg0AElTR05EAAAAAgAAAAgAAAA4AAAAAAAAAAAAAAADAAAAAAAAAAMDAAA4AAAAAQAAAAAAAAADAAAAAQAAAAcHAABURVhDT09SRACrq6tPU0dOLAAAAAEAAAAIAAAAIAAAAAAAAAAAAAAAAwAAAAAAAAAPAAAAU1ZfVGFyZ2V0AKurU0hEUlQcAABAAAAAFQcAADUYAAASAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAIA:AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAP1kIAARGjiAAAAAAACEAAABaAAADAGAQAAAAAABaAAADAGAQAAEAAABaAAADAGAQAAIAAABaAAADAGAQAAMAAABaCAADAGAQAAQAAABYGAAEAHAQAAAAAABVVQAAWBgABABwEAABAAAAVVUAAFgYAAQAcBAAAgAAAFVVAABYGAAEAHAQAAMAAABVVQAAWBgABABwEAAEAAAAVVUAAGIQAAMyEBAAAAAAAGIQAANyEBAAAQAAAGUAAAPyIBAAAAAAAGgAAAILAAAASAAAC:IAEAAAAAAARhAQAAAAAABGfhAAAAAAAABgEAAAAAAAAUAAAAAAAAAAAAALcgAQAAEAAABGABCAwQAAAAAAAAACQAAAAACAPwAAgD8AAIA:AAAAAAAAAAhCABAAAgAAABoAEIDBAAAAAAAAAAoAEAABAAAAHQAABxIAEAABAAAAKgAQAAIAAAABQAAAAAAAAB0AAAoyABAAAwAAAEYAEAAAAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAA3AAAPMgAQAAMAAABGABAAAwAAAAJAAAAAAIA:AACAPwAAAAAAAAAAAkAAAAAAgL8AAIC:AAAAAAAAAAA4AAAHYgAQAAEAAABWBhAAAQAAAAYBEAADAAAANwAACTIAEAACAAAABgAQAAEAAABGABAAAAAAAJYFEAABAAAAEAAABxIAEAAAAAAARgIQAAIAAABGAhAAAgAAAEQAAAUSABAAAAAAAAoAEAAAAAAAOAAAB3IAEAABAAAABgAQAAAAAABGAhAAAgAAADIAAAkSABAAAAAAADoAEAAAAAAAAUAAAAD:f0EBQAAAgACANxsAAAUSABAAAAAAAAoAEAAAAAAAVgAABRIAEAAAAAAACgAQAAAAAAAyAAAJEgAQAAAAAAAKABAAAAAAAAFAAACAAIC9OgAQAAAAAAA4IAAHEgAQAAAAAAAKABAAAAAAAAFAAACAB4BBSAAAC:IAEAACAAAARhAQAAAAAABGfhAAAQAAAABgEAABAAAAAUAAAAAAAABBAAAFIgAQAAAAAAA6ABAAAgAAADgAAAgiABAAAAAAABoAEAAAAAAAOoAgAAAAAAAeAAAAGgAABYIAEAABAAAAOgAQAAIAAAAyAAAKcgAQAAMAAAAGABAAAAAAAEYCEIBBAAAAAgAAAEYCEAACAAAAAAAACnIAEAAEAAAARgIQAAIAAAACQAAACtcjvQrXI70K1yO9AAAAADIAAAxyABAABAAAAAYAEAAAAAAARgIQAAQAAAACQAAACtcjPQrXIz0K1yM9AAAAAEgAAAvyABAABQAAAEYQEAAAAAAARn4QAAIAAAAAYBAAAgAAAAFAAAAAAAAAMgAACRIAEAAAAAAACgAQAAUAAAABQAAAAAAAQAFAAAAAAIC:EAAAB4IAEAACAAAARhIQAAEAAABGEhAAAQAAAEQAAAWCABAAAgAAADoAEAACAAAAOAAAB3IAEAAFAAAA9g8QAAIAAABGEhAAAQAAADIAAAkSABAAAAAAAAoAEAAAAAAAAUAAAAAAAD8BQAAAAAAAPwAAAAkSABAAAAAAAAoAEAAAAAAACoAggEEAAAAAAAAAHQAAAA4AAAgSABAAAAAAABqAIAAAAAAAHQAAAAoAEAAAAAAAEAAACIIAEAACAAAARoIgAAAAAAAcAAAARgIQAAUAAAAOAAAHEgAQAAAAAAAKABAAAAAAADoAEAACAAAAMgAACnIAEAAFAAAARgIQAAUAAAAGABAAAAAAAEaCIAAAAAAAGwAAAAAAAAlyABAABgAAAEYCEIBBAAAABQAAAEaCIAAAAAAAGwAAABAAAAcSABAAAAAAAEYCEAAGAAAARgIQAAYAAABEAAAFEgAQAAAAAAAKABAAAAAAADgAAAdyABAABwAAAAYAEAAAAAAARgIQAAYAAAAQAAAHggAQAAIAAABGAhAAAQAAAEYCEAAHAAAANAAAB4IAEAACAAAAOgAQAAIAAAABQAAAAAAAADgAAAtyABAACAAAAEaCIAAAAAAAGgAAAAJAAACGq9s%hqvbPoar2z4AAAAAOAAABzIAEAAJAAAAJgoQAAEAAAAmChAAAQAAADIAAAqCABAAAwAAABoAEAABAAAAGgAQAAEAAAAKABCAQQAAAAkAAAA2AAAGMgAQAAoAAADmiiAAAAAAABgAAAA2AAAGQgAQAAoAAAAKgCAAAAAAABkAAAA4AAAHcgAQAAkAAABWBRAACQAAAEYCEAAKAAAAOAAACnIAEAAJAAAARgIQAAkAAAACQAAAcT0%P3E9Pj9xPT4:AAAAADIAAAlyABAACAAAAEYCEAAIAAAA9g8QAAMAAABGAhAACQAAADIAAA1yABAACAAAAEaCIAAAAAAAFAAAAAJAAADG32I:xt9iP8bfYj8AAAAARgIQAAgAAAAyAAANcgAQAAgAAABGAhCAQQAAAAoAAAACQAAAKqd9PiqnfT4qp30%AAAAAEYCEAAIAAAAOAAACHIAEAAJAAAAVgUQAAEAAABGgiAAAAAAABcAAAA4AAAKcgAQAAkAAABGAhAACQAAAAJAAACGq1s:hqtbP4arWz8AAAAAMgAACnIAEAAIAAAARgIQAAkAAACmChCAQQAAAAEAAABGAhAACAAAADgAAAhyABAACQAAAFYFEAABAAAAlocgAAAAAAAZAAAAOAAAB3IAEAAJAAAABgAQAAEAAABGAhAACQAAADIAAAxyABAACAAAAEYCEAAJAAAAAkAAAIarWz%Gq1s:hqtbPwAAAABGAhAACAAAADgAAAkSABAACQAAACoAEIBBAAAAAQAAADqAIAAAAAAAFwAAADgAAAliABAACQAAAKYKEIBBAAAAAQAAAAaBIAAAAAAAGAAAADgAAAdyABAACQAAAAYAEAABAAAARgIQAAkAAAAyAAAMcgAQAAgAAABGAhAACQAAAAJAAACGq1s:hqtbP4arWz8AAAAARgIQAAgAAAA4AAAIcgAQAAkAAABWBRAAAQAAAJaHIAAAAAAAFgAAADIAAAxyABAACAAAAEYCEAAJAAAAAkAAAGn8gj9p:II:afyCPwAAAABGAhAACAAAADgAAAkSABAACQAAACoAEIBBAAAAAQAAADqAIAAAAAAAFAAAADgAAAliABAACQAAAKYKEIBBAAAAAQAAAAaBIAAAAAAAFQAAADIAAAxyABAACAAAAEYCEAAJAAAAAkAAAGn8gj9p:II:afyCPwAAAABGAhAACAAAADgAAAgyABAACQAAAAYAEAABAAAA5oogAAAAAAAVAAAAOAAACEIAEAAJAAAACgAQAAEAAAAKgCAAAAAAABYAAAAyAAAMcgAQAAgAAABGAhAACQAAAAJAAABp:II:afyCP2n8gj8AAAAARgIQAAgAAAA4AAAIcgAQAAkAAABGAhAABAAAAEaCIAAAAAAAHgAAADIAAAlyABAACAAAAEYCEAAIAAAARgIQAAMAAABGAhAACQAAADgAAAciABAAAAAAABoAEAAAAAAAAUAAAIGAgDs4AAAHcgAQAAgAAABWBRAAAAAAAEYCEAAIAAAASAAAC:IAEAAJAAAARhAQAAAAAABGfhAAAwAAAABgEAADAAAAAUAAAAAAAAA4AAAH4gAQAAkAAAAGCRAACAAAAAYAEAAJAAAAGAAAByIAEAAAAAAAOgAQAAAAAAABQAAAAACAPzIAAAlyABAAAgAAAEYCEAAIAAAABgAQAAkAAABGAhAAAgAAADcAAAlyABAAAgAAAFYFEAAAAAAARgIQAAIAAACWBxAACQAAADcAAAxyABAAAwAAAFYFEAAAAAAAAkAAAAAAAAAAAAAAAAAAAAAAAABGAhAAAwAAADIAAAqyABAAAAAAAEYIEAAGAAAABgAQAAAAAABGiCAAAAAAAB8AAAAQAAAHggAQAAMAAABGAxAAAAAAAEYDEAAAAAAARAAABYIAEAADAAAAOgAQAAMAAAA4AAAHsgAQAAAAAABGDBAAAAAAAPYPEAADAAAAEAAAB4IAEAADAAAARgIQAAEAAABGAxAAAAAAABAAAAcSABAAAAAAAEYCEAAHAAAARgMQAAAAAAAQAAAIIgAQAAAAAABGAhAAAQAAAEaCIAAAAAAAHwAAADQAAAeCABAAAAAAABoAEAAAAAAAAUAAAAAAAAA4AAAHggAQAAQAAAAqABAAAAAAACoAEAAAAAAAAAAAC3IAEAAGAAAARgIQgEEAAAAEAAAAAkAAAAAAgD8AAIA:AACAPwAAAAAyAAAJggAQAAUAAAAKABAAAAAAAAFAAABZwLHAAUAAAAx238A4AAAHEgAQAAAAAAAKABAAAAAAADoAEAAFAAAAGQAABRIAEAAAAAAACgAQAAAAAAAyAAAJcgAQAAQAAABGAhAABgAAAAYAEAAAAAAARgIQAAQAAAA4AAAHEgAQAAAAAAA6ABAABAAAADoAEAAEAAAAOAAAB4IAEAADAAAAOgAQAAMAAAA6ABAAAwAAADIAAAmCABAABQAAADoAEAAEAAAAOgAQAAQAAAABQAAAAACAvzIAAAmCABAAAwAAADoAEAADAAAAOgAQAAUAAAABQAAAAACAPzgAAAeCABAAAwAAADoAEAADAAAAOgAQAAMAAAA4AAAHEgAQAAAAAAAKABAAAAAAAAFAAACD%aI%DgAABxIAEAAAAAAACgAQAAAAAAA6ABAAAwAAADIAAApCABAAAAAAACoAEIBBAAAAAAAAACoAEAAAAAAAAUAAAAAAgD8yAAAJIgAQAAAAAAAaABAAAAAAACoAEAAAAAAAOgAQAAQAAAAyAAAJQgAQAAAAAAA6ABAAAgAAACoAEAAAAAAAOgAQAAQAAAA4AAAHIgAQAAAAAAAqABAAAAAAABoAEAAAAAAADgAACiIAEAAAAAAAAkAAAAAAgD8AAIA:AACAPwAAgD8aABAAAAAAADYgAAUiABAAAAAAABoAEAAAAAAAOAAABxIAEAAAAAAAGgAQAAAAAAAKABAAAAAAADgAAAdyABAAAAAAAAYAEAAAAAAARgIQAAQAAAA4AAAHcgAQAAAAAAD2DxAAAQAAAEYCEAAAAAAAOAAACnIAEAAAAAAARgIQAAAAAAACQAAAAACAPgAAgD4AAIA%AAAAADIAAAlyABAAAAAAAEYCEAADAAAA9g8QAAAAAABGAhAAAAAAADgAAAhyABAAAQAAAEYCEAABAAAA9o8gAAAAAAAfAAAAMgAADHIAEAABAAAARgIQAAEAAAACQAAAAAAgQQAAIEEAACBBAAAAAEYCEAAFAAAAAAAACXIAEAADAAAARgIQgEEAAAABAAAARoIgAAAAAAAbAAAAEAAAB4IAEAAAAAAARgIQAAMAAABGAhAAAwAAAEsAAAWCABAAAAAAADoAEAAAAAAAMQAACPIAEAADAAAARo4gAAAAAAAQAAAA9g8QAAAAAAABAAAK8gAQAAMAAABGDhAAAwAAAAJAAAAAAIA:AACAPwAAgD8AAIA:EQAACoIAEAABAAAAAkAAAAAAgD8AAIA:AACAPwAAgD9GDhAAAwAAABsAAAWCABAAAQAAADoAEAABAAAAKQAAB4IAEAACAAAAOgAQAAEAAAABQAAAAgAAAB4AAApyABAAAwAAAPYPEAACAAAAAkAAAAEAAAACAAAAAwAAAAAAAAA4AAAJ8gAQAAQAAABWBRAAAQAAAEaOIAQAAAAACgAQAAMAAAAyAAAL8gAQAAQAAAAGABAAAQAAAEaOIAQAAAAAOgAQAAIAAABGDhAABAAAADIAAAvyABAABAAAAKYKEAABAAAARo4gBAAAAAAaABAAAwAAAEYOEAAEAAAAAAAACfIAEAADAAAARg4QAAQAAABGjiAEAAAAACoAEAADAAAADgAAB3IAEAADAAAARgIQAAMAAAD2DxAAAwAAADEAAAeCABAAAwAAAAFAAAAAAAAAOgAQAAMAAAAAAAAJQgAQAAMAAAAqABAAAwAAADqAIIBBAAAAAAAAAB8AAAAAAAAK8gAQAAQAAABGBBAAAwAAAAJAAAAAAIC5AACAugAAgLkAAAAARgAACxIAEAAEAAAARgAQAAQAAAAGcBAABAAAAABgEAAEAAAAKgAQAAMAAABGAAALIgAQAAQAAADmChAABAAAAAZwEAAEAAAAAGAQAAQAAAAqABAAAwAAAAAAAAryABAABQAAAEYEEAADAAAAAkAAAAAAgLkAAIA6AAAAAAAAgLpGAAALQgAQAAQAAABGABAABQAAAAZwEAAEAAAAAGAQAAQAAAAqABAAAwAAAEYAAAuCABAABAAAAOYKEAAFAAAABnAQAAQAAAAAYBAABAAAACoAEAADAAAARgAACxIAEAAFAAAARgAQAAMAAAAGcBAABAAAAABgEAAEAAAAKgAQAAMAAAAAAAAK8gAQAAYAAABGBBAAAwAAAAJAAAAAAAAAAACAOgAAgDkAAIC6RgAACyIAEAAFAAAARgAQAAYAAAAGcBAABAAAAABgEAAEAAAAKgAQAAMAAABGAAALQgAQAAUAAADmChAABgAAAAZwEAAEAAAAAGAQAAQAAAAqABAAAwAAAAAAAAryABAABgAAAEYEEAADAAAAAkAAAAAAgDkAAAAAAACAOQAAgDpGAAALEgAQAAMAAABGABAABgAAAAZwEAAEAAAAAGAQAAQAAAAqABAAAwAAAEYAAAsiABAAAwAAAOYKEAAGAAAABnAQAAQAAAAAYBAABAAAACoAEAADAAAAHwAEAzoAEAADAAAAAAAAB0IAEAADAAAAGgAQAAQAAAAKABAABAAAAAAAAAdCABAAAwAAACoAEAAEAAAAKgAQAAMAAAAAAAAHQgAQAAMAAAA6ABAABAAAACoAEAADAAAAAAAAB0IAEAADAAAACgAQAAUAAAAqABAAAwAAAAAAAAdCABAAAwAAABoAEAAFAAAAKgAQAAMAAAAAAAAHQgAQAAMAAAAqABAABQAAACoAEAADAAAAAAAABxIAEAADAAAACgAQAAMAAAAqABAAAwAAAAAAAAcSABAAAwAAABoAEAADAAAACgAQAAMAAAA4AAAHEgAQAAMAAAAKABAAAwAAAAFAAAA5juM9EgAAATYAAAUSABAAAwAAAAFAAAAAAIA:FQAAAREAAAkiABAAAwAAAEaOIAAAAAAAEAAAAEaekAA6ABAAAQAAAB8AAAM6ABAAAQAAADYAAAVCABAAAwAAABoAEAADAAAAEgAAAR4AAAeCABAAAwAAADoAEAABAAAAAUAAAP::::8RAAAJggAQAAMAAABGjiAAAAAAABAAAABGnpAAOgAQAAMAAAAAAAAIQgAQAAMAAAA6ABCAQQAAAAMAAAAaABAAAwAAABUAAAEAAAAIggAQAAAAAAA6ABCAQQAAAAAAAAAaABAAAwAAAA4AAAeCABAAAAAAADoAEAAAAAAAKgAQAAMAAAAdAAAHIgAQAAMAAAABQAAAmpkZPjoAEAAAAAAAJwAAB4IAEAABAAAAOgAQAAEAAAABQAAAAwAAAAEAAAeCABAAAQAAADoAEAABAAAAGgAQAAMAAAAeAAAHIgAQAAMAAAA6ABAAAgAAAAFAAAAEAAAAHgAACuIAEAADAAAAVgUQAAMAAAACQAAAAAAAAAEAAAACAAAAAwAAADgAAAnyABAABAAAAFYFEAABAAAARo4gBAAAAAAaABAAAwAAADIAAAzyABAABAAAAAYAEAABAAAARo4gBgAAAAAEAAAAOgAQAAIAAABGDhAABAAAADIAAAvyABAABAAAAKYKEAABAAAARo4gBAAAAAAqABAAAwAAAEYOEAAEAAAAAAAACfIAEAAEAAAARg4QAAQAAABGjiAEAAAAADoAEAADAAAADgAAB3IAEAABAAAARgIQAAQAAAD2DxAABAAAAAAAAAlCABAAAQAAACoAEAABAAAAOoAggEEAAAAAAAAAHwAAAAAAAAryABAABQAAAEYEEAABAAAAAkAAAAAAgLkAAIC6AACAuQAAAABGAAALggAQAAIAAABGABAABQAAAAZwEAAEAAAAAGAQAAQAAAAqABAAAQAAAEYAAAsiABAAAwAAAOYKEAAFAAAABnAQAAQAAAAAYBAABAAAACoAEAABAAAAAAAACvIAEAAFAAAARgQQAAEAAAACQAAAAACAuQAAgDoAAAAAAACAukYAAAtCABAAAwAAAEYAEAAFAAAABnAQAAQAAAAAYBAABAAAACoAEAABAAAARgAAC4IAEAADAAAA5goQAAUAAAAGcBAABAAAAABgEAAEAAAAKgAQAAEAAABGAAALEgAQAAQAAABGABAAAQAAAAZwEAAEAAAAAGAQAAQAAAAqABAAAQAAAAAAAAryABAABQAAAEYEEAABAAAAAkAAAAAAAAAAAIA6AACAOQAAgLpGAAALIgAQAAQAAABGABAABQAAAAZwEAAEAAAAAGAQAAQAAAAqABAAAQAAAEYAAAtCABAABAAAAOYKEAAFAAAABnAQAAQAAAAAYBAABAAAACoAEAABAAAAAAAACvIAEAAFAAAARgQQAAEAAAACQAAAAACAOQAAAAAAAIA5AACAOkYAAAsSABAAAQAAAEYAEAAFAAAABnAQAAQAAAAAYBAABAAAACoAEAABAAAARgAACyIAEAABAAAA5goQAAUAAAAGcBAABAAAAABgEAAEAAAAKgAQAAEAAAAfAAQDOgAQAAEAAAAxAAAHQgAQAAEAAAABQAAAAAAAADoAEAAEAAAAHwAEAyoAEAABAAAAAAAAB0IAEAABAAAAOgAQAAIAAAAaABAAAwAAAAAAAAdCABAAAQAAACoAEAADAAAAKgAQAAEAAAAAAAAHQgAQAAEAAAA6ABAAAwAAACoAEAABAAAAAAAAB0IAEAABAAAACgAQAAQAAAAqABAAAQAAAAAAAAdCABAAAQAAABoAEAAEAAAAKgAQAAEAAAAAAAAHQgAQAAEAAAAqABAABAAAACoAEAABAAAAAAAABxIAEAABAAAACgAQAAEAAAAqABAAAQAAAAAAAAcSABAAAQAAABoAEAABAAAACgAQAAEAAAA4AAAHEgAQAAEAAAAKABAAAQAAAAFAAAA5juM9EgAAATYAAAUSABAAAQAAAAFAAAAAAIA:FQAAATggAAeCABAAAAAAADoAEAAAAAAAAUAAAFVV1UAyAAAJIgAQAAEAAAA6ABAAAAAAAAFAAAAAAADAAUAAAAAAQEA4AAAHggAQAAAAAAA6ABAAAAAAADoAEAAAAAAAOAAAB4IAEAAAAAAAOgAQAAAAAAAaABAAAQAAAAAAAAgiABAAAQAAAAoAEIBBAAAAAQAAAAoAEAADAAAAMgAACYIAEAAAAAAAOgAQAAAAAAAaABAAAQAAAAoAEAABAAAAFQAAATcAAAmCABAAAAAAADoAEAABAAAAOgAQAAAAAAAKABAAAwAAADgAAAdyABAAAAAAAPYPEAAAAAAARgIQAAAAAAAyAAAKciAQAAAAAABGAhAAAAAAAEaCIAAAAAAAIAAAAEYCEAACAAAANgAABYIgEAAAAAAAAUAAAAAAgD8%AAABU1RBVHQAAADXAAAACwAAAAQAAAADAAAAngAAAAYAAAACAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAEgAAAAAAAAAAAAAABwAAAAUAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHexBlue_mesh_fragData0 = "s1220:AAAARFhCQ5fl%xOEr5zxbtT2f:l5FhgBAAAAkAMAAAUAAAA0AAAAjAAAAMAAAAAMAQAAFAMAAFJERUZQAAAAAAAAAAAAAAAAAAAAHAAAAAAE::8AAQAAHAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dOLAAAAAEAAAAIAAAAIAAAAAAAAAAAAAAAAwAAAAAAAAAHBwAAVEVYQ09PUkQAq6urT1NHTkQAAAACAAAACAAAADgAAAAAAAAAAAAAAAMAAAAAAAAADwAAADgAAAABAAAAAAAAAAMAAAABAAAADwAAAFNWX1RhcmdldACrq1NIRFIAAgAAQAAAAIAAAABiEAADchAQAAAAAABlAAAD8iAQAAAAAABlAAAD8iAQAAEAAABoAAACAwAAAA0ABAMBQAAA:::::xAAAAcSABAAAAAAAEYSEAAAAAAARhIQAAAAAABEAAAFEgAQAAAAAAAKABAAAAAAADgAAAdyABAAAAAAAAYAEAAAAAAAJhkQAAAAAAAAAAAJggAQAAAAAAAqABCAgQAAAAAAAAAaABCAgQAAAAAAAAAAAAAIggAQAAAAAAAKABCAgQAAAAAAAAA6ABAAAAAAAA4AAAdyABAAAAAAAEYCEAAAAAAA9g8QAAAAAAAAAAALMgAQAAEAAABmChCAwQAAAAAAAAACQAAAAACAPwAAgD8AAAAAAAAAAB0AAApyABAAAgAAAEYCEAAAAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAA3AAAPkgAQAAAAAABWCRAAAgAAAAJAAAAAAIA:AAAAAAAAAAAAAIA:AkAAAAAAgL8AAAAAAAAAAAAAgL84AAAHkgAQAAAAAAAGDBAAAAAAAAYEEAABAAAANwAACTIgEAAAAAAABgAQAAIAAACWBRAAAAAAAMYAEAAAAAAANgAACMIgEAAAAAAAAkAAAAAAAAAAAAAAzczMPYAAgD02AAAI8iAQAAEAAAACQAAAAAAAAOPN2z8BAIBAcf1:Qz4AAAFTVEFUdAAAAA8AAAADAAAAAAAAAAMAAAAJAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHexBlue_mesh_vertData0 = "s1580:Am5vcgAAcG9zAAEBJEdsb2JhbHMAAAJOAAAAAAAsAAAAAwNXVlAAMAAAAEAAAAAEBERYQkOUFphmEkryQPQiA0vQbvwDAQAAAHAEAAAFAAAANAAAACgBAAB0AQAAzAEAAPQDAABSREVG7AAAAAEAAABIAAAAAQAAABwAAAAABP7:AAEAALgAAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAACRHbG9iYWxzAKurqzwAAAACAAAAYAAAAHAAAAAAAAAAAAAAAJAAAAAAAAAALAAAAAIAAACUAAAAAAAAAKQAAAAwAAAAQAAAAAIAAACoAAAAAAAAAE4Aq6sDAAMAAwADAAAAAAAAAAAAV1ZQAAMAAwAEAAQAAAAAAAAAAABNaWNyb3NvZnQgKFIpIEhMU0wgU2hhZGVyIENvbXBpbGVyIDYuMy45NjAwLjE2Mzg0AKurSVNHTkQAAAACAAAACAAAADgAAAAAAAAAAAAAAAMAAAAAAAAAAwMAADgAAAABAAAAAAAAAAMAAAABAAAADw8AAFRFWENPT1JEAKurq09TR05QAAAAAgAAAAgAAAA4AAAAAAAAAAAAAAADAAAAAAAAAAcIAABBAAAAAAAAAAEAAAADAAAAAQAAAA8AAABURVhDT09SRABTVl9Qb3NpdGlvbgCrq6tTSERSIAIAAEAAAQCIAAAAWQAABEaOIAAAAAAABwAAAF8AAAMyEBAAAAAAAF8AAAPyEBAAAQAAAGUAAANyIBAAAAAAAGcAAATyIBAAAQAAAAEAAABoAAACAgAAADYAAAUyABAAAAAAAEYQEAAAAAAANgAABUIAEAAAAAAAOhAQAAEAAAAQAAAIEgAQAAEAAABGAhAAAAAAAEaCIAAAAAAAAAAAABAAAAgiABAAAQAAAEYCEAAAAAAARoIgAAAAAAABAAAAEAAACEIAEAABAAAARgIQAAAAAABGgiAAAAAAAAIAAAAQAAAHEgAQAAAAAABGAhAAAQAAAEYCEAABAAAARAAABRIAEAAAAAAACgAQAAAAAAA4AAAHciAQAAAAAAAGABAAAAAAAEYCEAABAAAANgAABXIAEAAAAAAARhIQAAEAAAA2AAAFggAQAAAAAAABQAAAAACAPxEAAAgSABAAAQAAAEYOEAAAAAAARo4gAAAAAAAFAAAAEQAACCIAEAABAAAARg4QAAAAAABGjiAAAAAAAAYAAAAAAAAHEgAQAAEAAAAaABAAAQAAAAoAEAABAAAANgAABYIgEAABAAAAGgAQAAEAAAA4AAAHQiAQAAEAAAAKABAAAQAAAAFAAAAAAAA:EQAACBIgEAABAAAARg4QAAAAAABGjiAAAAAAAAMAAAARAAAIIiAQAAEAAABGDhAAAAAAAEaOIAAAAAAABAAAAD4AAAFTVEFUdAAAABIAAAACAAAAAAAAAAQAAAAMAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHexBlue_shadowmap_fragData0 = "s442:AAAARFhCQz0AkoNhH5PsWEwT4RdGesIBAAAASAEAAAUAAAA0AAAAjAAAAJwAAACsAAAAzAAAAFJERUZQAAAAAAAAAAAAAAAAAAAAHAAAAAAE::8AAQAAHAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dOCAAAAAAAAAAIAAAAT1NHTggAAAAAAAAACAAAAFNIRFIYAAAAQAAAAAYAAAANAAQDAUAAAP::::8%AAABU1RBVHQAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHexBlue_shadowmap_vertData0 = "s1111:AXBvcwAAASRHbG9iYWxzAAABTFdWUAAAAAAAQAAAAAQERFhCQ3xflQ:oR9:Lx6mX3k:DcrwBAAAAIAMAAAUAAAA0AAAAAAEAADQBAABoAQAApAIAAFJERUbEAAAAAQAAAEgAAAABAAAAHAAAAAAE:v8AAQAAkAAAADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAJEdsb2JhbHMAq6urPAAAAAEAAABgAAAAQAAAAAAAAAAAAAAAeAAAAAAAAABAAAAAAgAAAIAAAAAAAAAATFdWUACrq6sDAAMABAAEAAAAAAAAAAAATWljcm9zb2Z0IChSKSBITFNMIFNoYWRlciBDb21waWxlciA2LjMuOTYwMC4xNjM4NACrq0lTR04sAAAAAQAAAAgAAAAgAAAAAAAAAAAAAAADAAAAAAAAAA8HAABURVhDT09SRACrq6tPU0dOLAAAAAEAAAAIAAAAIAAAAAAAAAABAAAAAwAAAAAAAAAPAAAAU1ZfUG9zaXRpb24AU0hEUjQBAABAAAEATQAAAFkAAARGjiAAAAAAAAQAAABfAAADchAQAAAAAABnAAAE8iAQAAAAAAABAAAAaAAAAgIAAAA2AAAFcgAQAAAAAABGEhAAAAAAADYAAAWCABAAAAAAAAFAAAAAAIA:EQAACBIAEAABAAAARg4QAAAAAABGjiAAAAAAAAIAAAARAAAIIgAQAAEAAABGDhAAAAAAAEaOIAAAAAAAAwAAAAAAAAcSABAAAQAAABoAEAABAAAACgAQAAEAAAA2AAAFgiAQAAAAAAAaABAAAQAAADgAAAdCIBAAAAAAAAoAEAABAAAAAUAAAAAAAD8RAAAIEiAQAAAAAABGDhAAAAAAAEaOIAAAAAAAAAAAABEAAAgiIBAAAAAAAEYOEAAAAAAARo4gAAAAAAABAAAAPgAAAVNUQVR0AAAACgAAAAIAAAAAAAAAAgAAAAYAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHexBlue_translucent_fragData0 = "s3720:AAEkR2xvYmFscwAACWNhc0RhdGEAAAAAAEABAAAEAXNoaXJyAEABAABwAAAABAFiYWNrZ3JvdW5kQ29sALABAAAMAAAAAwFlbnZtYXBTdHJlbmd0aAC8AQAABAAAAAEBc3VuRGlyAMABAAAMAAAAAwFyZWNlaXZlU2hhZG93AMwBAAAEAAAAAQFleWUA0AEAAAwAAAADAXNoYWRvd3NCaWFzANwBAAAEAAAAAQFzdW5Db2wA4AEAAAwAAAADAURYQkNPK:PVOHCWuJ0VSTDTKsL%AQAAACgKAAAFAAAANAAAAFgCAADgAgAALAMAAKwJAABSREVGHAIAAAEAAABIAAAAAQAAABwAAAAABP::AAEAAOcBAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAACRHbG9iYWxzAKurqzwAAAAJAAAAYAAAAPABAAAAAAAAAAAAADgBAAAAAAAAQAEAAAAAAABAAQAAAAAAAFABAABAAQAAcAAAAAIAAABYAQAAAAAAAGgBAACwAQAADAAAAAIAAAB4AQAAAAAAAIgBAAC8AQAABAAAAAIAAACYAQAAAAAAAKgBAADAAQAADAAAAAAAAAB4AQAAAAAAAK8BAADMAQAABAAAAAAAAADAAQAAAAAAANABAADQAQAADAAAAAAAAAB4AQAAAAAAANQBAADcAQAABAAAAAAAAACYAQAAAAAAAOABAADgAQAADAAAAAAAAAB4AQAAAAAAAGNhc0RhdGEAAQADAAEABAAUAAAAAAAAAHNoaXJyAKurAQADAAEABAAHAAAAAAAAAGJhY2tncm91bmRDb2wAq6sBAAMAAQADAAAAAAAAAAAAZW52bWFwU3RyZW5ndGgAqwAAAwABAAEAAAAAAAAAAABzdW5EaXIAcmVjZWl2ZVNoYWRvdwCrq6sAAAEAAQABAAAAAAAAAAAAZXllAHNoYWRvd3NCaWFzAHN1bkNvbABNaWNyb3NvZnQgKFIpIEhMU0wgU2hhZGVyIENvbXBpbGVyIDYuMy45NjAwLjE2Mzg0AKurq0lTR06AAAAABAAAAAgAAABoAAAAAAAAAAAAAAADAAAAAAAAAAcAAABoAAAAAQAAAAAAAAADAAAAAQAAAAcHAABoAAAAAgAAAAAAAAADAAAAAgAAAAcAAABxAAAAAAAAAAEAAAADAAAAAwAAAA8EAABURVhDT09SRABTVl9Qb3NpdGlvbgCrq6tPU0dORAAAAAIAAAAIAAAAOAAAAAAAAAAAAAAAAwAAAAAAAAAPAAAAOAAAAAEAAAAAAAAAAwAAAAEAAAAPAAAAU1ZfVGFyZ2V0AKurU0hEUngGAABAAAAAngEAAFkAAARGjiAAAAAAABwAAABiEAADchAQAAEAAABkIAAEQhAQAAMAAAABAAAAZQAAA:IgEAAAAAAAZQAAA:IgEAABAAAAaAAAAgQAAAA2AAAGMgAQAAAAAADmiiAAAAAAABgAAAA2AAAGQgAQAAAAAAAKgCAAAAAAABkAAAA4AAALcgAQAAEAAABGgiAAAAAAABoAAAACQAAAhqvbPoar2z6Gq9s%AAAAABAAAAeCABAAAAAAAEYSEAABAAAARhIQAAEAAABEAAAFggAQAAAAAAA6ABAAAAAAADgAAAdyABAAAgAAAPYPEAAAAAAAlhQQAAEAAAA4AAAHMgAQAAMAAACWBRAAAgAAAJYFEAACAAAAOAAAB%IAEAADAAAABgkQAAAAAABWBRAAAwAAADIAAAqCABAAAAAAAAoAEAACAAAACgAQAAIAAAAKABCAQQAAAAMAAAA4AAAKcgAQAAMAAACWBxAAAwAAAAJAAABxPT4:cT0%P3E9Pj8AAAAAMgAACXIAEAABAAAARgIQAAEAAAD2DxAAAAAAAEYCEAADAAAAMgAADXIAEAABAAAARoIgAAAAAAAUAAAAAkAAAMbfYj:G32I:xt9iPwAAAABGAhAAAQAAADIAAA1yABAAAAAAAEYCEIBBAAAAAAAAAAJAAAAqp30%Kqd9PiqnfT4AAAAARgIQAAEAAAA4AAAIcgAQAAEAAAAGABAAAgAAAEaCIAAAAAAAFwAAADgAAApyABAAAQAAAEYCEAABAAAAAkAAAIarWz%Gq1s:hqtbPwAAAAAyAAAKcgAQAAAAAABGAhAAAQAAAFYFEIBBAAAAAgAAAEYCEAAAAAAAOAAACHIAEAABAAAABgAQAAIAAACWhyAAAAAAABkAAAA4AAAHcgAQAAEAAACmChAAAgAAAEYCEAABAAAAMgAADHIAEAAAAAAARgIQAAEAAAACQAAAhqtbP4arWz%Gq1s:AAAAAEYCEAAAAAAAOAAACRIAEAABAAAAGgAQgEEAAAACAAAAOoAgAAAAAAAXAAAAOAAACWIAEAABAAAAVgUQgEEAAAACAAAABoEgAAAAAAAYAAAAOAAAB3IAEAABAAAApgoQAAIAAABGAhAAAQAAADIAAAxyABAAAAAAAEYCEAABAAAAAkAAAIarWz%Gq1s:hqtbPwAAAABGAhAAAAAAADgAAAhyABAAAQAAAAYAEAACAAAAlocgAAAAAAAWAAAAMgAADHIAEAAAAAAARgIQAAEAAAACQAAAafyCP2n8gj9p:II:AAAAAEYCEAAAAAAAOAAACRIAEAABAAAAGgAQgEEAAAACAAAAOoAgAAAAAAAUAAAAOAAACWIAEAABAAAAVgUQgEEAAAACAAAABoEgAAAAAAAVAAAAMgAADHIAEAAAAAAARgIQAAEAAAACQAAAafyCP2n8gj9p:II:AAAAAEYCEAAAAAAAOAAACDIAEAABAAAApgoQAAIAAADmiiAAAAAAABUAAAA4AAAIQgAQAAEAAAAqABAAAgAAAAqAIAAAAAAAFgAAADIAAAxyABAAAAAAAEYCEAABAAAAAkAAAGn8gj9p:II:afyCPwAAAABGAhAAAAAAADgAAAtyABAAAQAAAEaCIAAAAAAAGwAAAAJAAAAK1yM9CtcjPQrXIz0AAAAAMgAADHIAEAAAAAAARgIQAAAAAAACQAAAAAAAAOnXrz7OzEw:AAAAAEYCEAABAAAAMgAADXIAEAAAAAAARgIQAAAAAAD2jyAAAAAAABsAAAACQAAAAAAAAOPN2z8BAIBAAAAAADIAAAqCABAAAAAAACoQEIBBAAAAAwAAAAFAAABmZmY:AUAAAAAAgD84AAAHEgAQAAEAAAA6ABAAAAAAADoAEAAAAAAAOAAAB4IAEAAAAAAAOgAQAAAAAAAKABAAAQAAADgAAAryABAAAAAAAEYOEAAAAAAAAkAAAPFjTD3xY0w98WNMPWdZw0w0AAAHggAQAAAAAAA6ABAAAAAAAAFAAAAK1yM8MwAAB4IAEAAAAAAAOgAQAAAAAAABQAAAAIA7RTgAAAdyIBAAAAAAAPYPEAAAAAAARgIQAAAAAAA4AAAHEiAQAAEAAAA6ABAAAAAAAAFAAADxY8w9NgAABYIgEAAAAAAAAUAAAPFjzD02AAAI4iAQAAEAAAACQAAAAAAAAAAAAAAAAAAAAACAPz4AAAFTVEFUdAAAAC0AAAAEAAAAAAAAAAQAAAAoAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHexBlue_translucent_vertData0 = "s2010:Am5vcgAAcG9zAAEBJEdsb2JhbHMAAARXAAAAAABAAAAABAROAEAAAAAsAAAAAwNXVlAAcAAAAEAAAAAEBGV5ZQCwAAAADAAAAAMBRFhCQ7%OSaEPHn11XVjGoPYz35sBAAAAmAUAAAUAAAA0AAAAcAEAALwBAABEAgAAHAUAAFJERUY0AQAAAQAAAEgAAAABAAAAHAAAAAAE:v8AAQAAAAEAADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAJEdsb2JhbHMAq6urPAAAAAQAAABgAAAAwAAAAAAAAAAAAAAAwAAAAAAAAABAAAAAAgAAAMQAAAAAAAAA1AAAAEAAAAAsAAAAAgAAANgAAAAAAAAA6AAAAHAAAABAAAAAAgAAAMQAAAAAAAAA7AAAALAAAAAMAAAAAgAAAPAAAAAAAAAAVwCrqwMAAwAEAAQAAAAAAAAAAABOAKurAwADAAMAAwAAAAAAAAAAAFdWUABleWUAAQADAAEAAwAAAAAAAAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dORAAAAAIAAAAIAAAAOAAAAAAAAAAAAAAAAwAAAAAAAAADAwAAOAAAAAEAAAAAAAAAAwAAAAEAAAAPDwAAVEVYQ09PUkQAq6urT1NHToAAAAAEAAAACAAAAGgAAAAAAAAAAAAAAAMAAAAAAAAABwgAAGgAAAABAAAAAAAAAAMAAAABAAAABwgAAGgAAAACAAAAAAAAAAMAAAACAAAABwgAAHEAAAAAAAAAAQAAAAMAAAADAAAADwAAAFRFWENPT1JEAFNWX1Bvc2l0aW9uAKurq1NIRFLQAgAAQAABALQAAABZAAAERo4gAAAAAAAMAAAAXwAAAzIQEAAAAAAAXwAAA:IQEAABAAAAZQAAA3IgEAAAAAAAZQAAA3IgEAABAAAAZQAAA3IgEAACAAAAZwAABPIgEAADAAAAAQAAAGgAAAIDAAAANgAABXIAEAAAAAAARhIQAAEAAAA2AAAFggAQAAAAAAABQAAAAACAPxEAAAgSABAAAQAAAEYOEAAAAAAARo4gAAAAAAAAAAAAEQAACCIAEAABAAAARg4QAAAAAABGjiAAAAAAAAEAAAARAAAIQgAQAAEAAABGDhAAAAAAAEaOIAAAAAAAAgAAAAAAAAlyIBAAAAAAAEYCEIBBAAAAAQAAAEaCIAAAAAAACwAAADYAAAVyIBAAAgAAAEYCEAABAAAANgAABTIAEAABAAAARhAQAAAAAAA2AAAFQgAQAAEAAAA6EBAAAQAAABAAAAgSABAAAgAAAEYCEAABAAAARoIgAAAAAAAEAAAAEAAACCIAEAACAAAARgIQAAEAAABGgiAAAAAAAAUAAAAQAAAIQgAQAAIAAABGAhAAAQAAAEaCIAAAAAAABgAAABAAAAcSABAAAQAAAEYCEAACAAAARgIQAAIAAABEAAAFEgAQAAEAAAAKABAAAQAAADgAAAdyIBAAAQAAAAYAEAABAAAARgIQAAIAAAARAAAIEgAQAAEAAABGDhAAAAAAAEaOIAAAAAAACQAAABEAAAgiABAAAQAAAEYOEAAAAAAARo4gAAAAAAAKAAAAAAAABxIAEAABAAAAGgAQAAEAAAAKABAAAQAAADYAAAWCIBAAAwAAABoAEAABAAAAOAAAB0IgEAADAAAACgAQAAEAAAABQAAAAAAAPxEAAAgSIBAAAwAAAEYOEAAAAAAARo4gAAAAAAAHAAAAEQAACCIgEAADAAAARg4QAAAAAABGjiAAAAAAAAgAAAA%AAABU1RBVHQAAAAXAAAAAwAAAAAAAAAGAAAAEAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHexGreen_mesh_fragData0 = "s1220:AAAARFhCQwCdcpU1mHRnNjlzRklZY6IBAAAAkAMAAAUAAAA0AAAAjAAAAMAAAAAMAQAAFAMAAFJERUZQAAAAAAAAAAAAAAAAAAAAHAAAAAAE::8AAQAAHAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dOLAAAAAEAAAAIAAAAIAAAAAAAAAAAAAAAAwAAAAAAAAAHBwAAVEVYQ09PUkQAq6urT1NHTkQAAAACAAAACAAAADgAAAAAAAAAAAAAAAMAAAAAAAAADwAAADgAAAABAAAAAAAAAAMAAAABAAAADwAAAFNWX1RhcmdldACrq1NIRFIAAgAAQAAAAIAAAABiEAADchAQAAAAAABlAAAD8iAQAAAAAABlAAAD8iAQAAEAAABoAAACAwAAAA0ABAMBQAAA:::::xAAAAcSABAAAAAAAEYSEAAAAAAARhIQAAAAAABEAAAFEgAQAAAAAAAKABAAAAAAADgAAAdyABAAAAAAAAYAEAAAAAAAJhkQAAAAAAAAAAAJggAQAAAAAAAqABCAgQAAAAAAAAAaABCAgQAAAAAAAAAAAAAIggAQAAAAAAAKABCAgQAAAAAAAAA6ABAAAAAAAA4AAAdyABAAAAAAAEYCEAAAAAAA9g8QAAAAAAAAAAALMgAQAAEAAABmChCAwQAAAAAAAAACQAAAAACAPwAAgD8AAAAAAAAAAB0AAApyABAAAgAAAEYCEAAAAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAA3AAAPkgAQAAAAAABWCRAAAgAAAAJAAAAAAIA:AAAAAAAAAAAAAIA:AkAAAAAAgL8AAAAAAAAAAAAAgL84AAAHkgAQAAAAAAAGDBAAAAAAAAYEEAABAAAANwAACTIgEAAAAAAABgAQAAIAAACWBRAAAAAAAMYAEAAAAAAANgAACMIgEAAAAAAAAkAAAAAAAAAAAAAAzczMPYAAgD02AAAI8iAQAAEAAAACQAAAlNrUPAEAgEAAAAAAcf1:Qz4AAAFTVEFUdAAAAA8AAAADAAAAAAAAAAMAAAAJAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHexGreen_shadowmap_vertData0 = "s1111:AXBvcwAAASRHbG9iYWxzAAABTFdWUAAAAAAAQAAAAAQERFhCQ3xflQ:oR9:Lx6mX3k:DcrwBAAAAIAMAAAUAAAA0AAAAAAEAADQBAABoAQAApAIAAFJERUbEAAAAAQAAAEgAAAABAAAAHAAAAAAE:v8AAQAAkAAAADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAJEdsb2JhbHMAq6urPAAAAAEAAABgAAAAQAAAAAAAAAAAAAAAeAAAAAAAAABAAAAAAgAAAIAAAAAAAAAATFdWUACrq6sDAAMABAAEAAAAAAAAAAAATWljcm9zb2Z0IChSKSBITFNMIFNoYWRlciBDb21waWxlciA2LjMuOTYwMC4xNjM4NACrq0lTR04sAAAAAQAAAAgAAAAgAAAAAAAAAAAAAAADAAAAAAAAAA8HAABURVhDT09SRACrq6tPU0dOLAAAAAEAAAAIAAAAIAAAAAAAAAABAAAAAwAAAAAAAAAPAAAAU1ZfUG9zaXRpb24AU0hEUjQBAABAAAEATQAAAFkAAARGjiAAAAAAAAQAAABfAAADchAQAAAAAABnAAAE8iAQAAAAAAABAAAAaAAAAgIAAAA2AAAFcgAQAAAAAABGEhAAAAAAADYAAAWCABAAAAAAAAFAAAAAAIA:EQAACBIAEAABAAAARg4QAAAAAABGjiAAAAAAAAIAAAARAAAIIgAQAAEAAABGDhAAAAAAAEaOIAAAAAAAAwAAAAAAAAcSABAAAQAAABoAEAABAAAACgAQAAEAAAA2AAAFgiAQAAAAAAAaABAAAQAAADgAAAdCIBAAAAAAAAoAEAABAAAAAUAAAAAAAD8RAAAIEiAQAAAAAABGDhAAAAAAAEaOIAAAAAAAAAAAABEAAAgiIBAAAAAAAEYOEAAAAAAARo4gAAAAAAABAAAAPgAAAVNUQVR0AAAACgAAAAIAAAAAAAAAAgAAAAYAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHexGreen_translucent_fragData0 = "s3720:AAEkR2xvYmFscwAACWNhc0RhdGEAAAAAAEABAAAEAXNoaXJyAEABAABwAAAABAFiYWNrZ3JvdW5kQ29sALABAAAMAAAAAwFlbnZtYXBTdHJlbmd0aAC8AQAABAAAAAEBc3VuRGlyAMABAAAMAAAAAwFyZWNlaXZlU2hhZG93AMwBAAAEAAAAAQFleWUA0AEAAAwAAAADAXNoYWRvd3NCaWFzANwBAAAEAAAAAQFzdW5Db2wA4AEAAAwAAAADAURYQkNIqcpN0vaKocNiKpicwKs%AQAAACgKAAAFAAAANAAAAFgCAADgAgAALAMAAKwJAABSREVGHAIAAAEAAABIAAAAAQAAABwAAAAABP::AAEAAOcBAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAACRHbG9iYWxzAKurqzwAAAAJAAAAYAAAAPABAAAAAAAAAAAAADgBAAAAAAAAQAEAAAAAAABAAQAAAAAAAFABAABAAQAAcAAAAAIAAABYAQAAAAAAAGgBAACwAQAADAAAAAIAAAB4AQAAAAAAAIgBAAC8AQAABAAAAAIAAACYAQAAAAAAAKgBAADAAQAADAAAAAAAAAB4AQAAAAAAAK8BAADMAQAABAAAAAAAAADAAQAAAAAAANABAADQAQAADAAAAAAAAAB4AQAAAAAAANQBAADcAQAABAAAAAAAAACYAQAAAAAAAOABAADgAQAADAAAAAAAAAB4AQAAAAAAAGNhc0RhdGEAAQADAAEABAAUAAAAAAAAAHNoaXJyAKurAQADAAEABAAHAAAAAAAAAGJhY2tncm91bmRDb2wAq6sBAAMAAQADAAAAAAAAAAAAZW52bWFwU3RyZW5ndGgAqwAAAwABAAEAAAAAAAAAAABzdW5EaXIAcmVjZWl2ZVNoYWRvdwCrq6sAAAEAAQABAAAAAAAAAAAAZXllAHNoYWRvd3NCaWFzAHN1bkNvbABNaWNyb3NvZnQgKFIpIEhMU0wgU2hhZGVyIENvbXBpbGVyIDYuMy45NjAwLjE2Mzg0AKurq0lTR06AAAAABAAAAAgAAABoAAAAAAAAAAAAAAADAAAAAAAAAAcAAABoAAAAAQAAAAAAAAADAAAAAQAAAAcHAABoAAAAAgAAAAAAAAADAAAAAgAAAAcAAABxAAAAAAAAAAEAAAADAAAAAwAAAA8EAABURVhDT09SRABTVl9Qb3NpdGlvbgCrq6tPU0dORAAAAAIAAAAIAAAAOAAAAAAAAAAAAAAAAwAAAAAAAAAPAAAAOAAAAAEAAAAAAAAAAwAAAAEAAAAPAAAAU1ZfVGFyZ2V0AKurU0hEUngGAABAAAAAngEAAFkAAARGjiAAAAAAABwAAABiEAADchAQAAEAAABkIAAEQhAQAAMAAAABAAAAZQAAA:IgEAAAAAAAZQAAA:IgEAABAAAAaAAAAgQAAAA2AAAGMgAQAAAAAADmiiAAAAAAABgAAAA2AAAGQgAQAAAAAAAKgCAAAAAAABkAAAA4AAALcgAQAAEAAABGgiAAAAAAABoAAAACQAAAhqvbPoar2z6Gq9s%AAAAABAAAAeCABAAAAAAAEYSEAABAAAARhIQAAEAAABEAAAFggAQAAAAAAA6ABAAAAAAADgAAAdyABAAAgAAAPYPEAAAAAAAlhQQAAEAAAA4AAAHMgAQAAMAAACWBRAAAgAAAJYFEAACAAAAOAAAB%IAEAADAAAABgkQAAAAAABWBRAAAwAAADIAAAqCABAAAAAAAAoAEAACAAAACgAQAAIAAAAKABCAQQAAAAMAAAA4AAAKcgAQAAMAAACWBxAAAwAAAAJAAABxPT4:cT0%P3E9Pj8AAAAAMgAACXIAEAABAAAARgIQAAEAAAD2DxAAAAAAAEYCEAADAAAAMgAADXIAEAABAAAARoIgAAAAAAAUAAAAAkAAAMbfYj:G32I:xt9iPwAAAABGAhAAAQAAADIAAA1yABAAAAAAAEYCEIBBAAAAAAAAAAJAAAAqp30%Kqd9PiqnfT4AAAAARgIQAAEAAAA4AAAIcgAQAAEAAAAGABAAAgAAAEaCIAAAAAAAFwAAADgAAApyABAAAQAAAEYCEAABAAAAAkAAAIarWz%Gq1s:hqtbPwAAAAAyAAAKcgAQAAAAAABGAhAAAQAAAFYFEIBBAAAAAgAAAEYCEAAAAAAAOAAACHIAEAABAAAABgAQAAIAAACWhyAAAAAAABkAAAA4AAAHcgAQAAEAAACmChAAAgAAAEYCEAABAAAAMgAADHIAEAAAAAAARgIQAAEAAAACQAAAhqtbP4arWz%Gq1s:AAAAAEYCEAAAAAAAOAAACRIAEAABAAAAGgAQgEEAAAACAAAAOoAgAAAAAAAXAAAAOAAACWIAEAABAAAAVgUQgEEAAAACAAAABoEgAAAAAAAYAAAAOAAAB3IAEAABAAAApgoQAAIAAABGAhAAAQAAADIAAAxyABAAAAAAAEYCEAABAAAAAkAAAIarWz%Gq1s:hqtbPwAAAABGAhAAAAAAADgAAAhyABAAAQAAAAYAEAACAAAAlocgAAAAAAAWAAAAMgAADHIAEAAAAAAARgIQAAEAAAACQAAAafyCP2n8gj9p:II:AAAAAEYCEAAAAAAAOAAACRIAEAABAAAAGgAQgEEAAAACAAAAOoAgAAAAAAAUAAAAOAAACWIAEAABAAAAVgUQgEEAAAACAAAABoEgAAAAAAAVAAAAMgAADHIAEAAAAAAARgIQAAEAAAACQAAAafyCP2n8gj9p:II:AAAAAEYCEAAAAAAAOAAACDIAEAABAAAApgoQAAIAAADmiiAAAAAAABUAAAA4AAAIQgAQAAEAAAAqABAAAgAAAAqAIAAAAAAAFgAAADIAAAxyABAAAAAAAEYCEAABAAAAAkAAAGn8gj9p:II:afyCPwAAAABGAhAAAAAAADgAAAtyABAAAQAAAEaCIAAAAAAAGwAAAAJAAAAK1yM9CtcjPQrXIz0AAAAAMgAADHIAEAAAAAAARgIQAAAAAAACQAAAdkiqO87MTD8AAAAAAAAAAEYCEAABAAAAMgAADXIAEAAAAAAARgIQAAAAAAD2jyAAAAAAABsAAAACQAAAlNrUPAEAgEAAAAAAAAAAADIAAAqCABAAAAAAACoQEIBBAAAAAwAAAAFAAABmZmY:AUAAAAAAgD84AAAHEgAQAAEAAAA6ABAAAAAAADoAEAAAAAAAOAAAB4IAEAAAAAAAOgAQAAAAAAAKABAAAQAAADgAAAryABAAAAAAAEYOEAAAAAAAAkAAAPFjTD3xY0w98WNMPWdZw0w0AAAHggAQAAAAAAA6ABAAAAAAAAFAAAAK1yM8MwAAB4IAEAAAAAAAOgAQAAAAAAABQAAAAIA7RTgAAAdyIBAAAAAAAPYPEAAAAAAARgIQAAAAAAA4AAAHEiAQAAEAAAA6ABAAAAAAAAFAAADxY8w9NgAABYIgEAAAAAAAAUAAAPFjzD02AAAI4iAQAAEAAAACQAAAAAAAAAAAAAAAAAAAAACAPz4AAAFTVEFUdAAAAC0AAAAEAAAAAAAAAAQAAAAoAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHexGreen_translucent_vertData0 = "s2010:Am5vcgAAcG9zAAEBJEdsb2JhbHMAAARXAAAAAABAAAAABAROAEAAAAAsAAAAAwNXVlAAcAAAAEAAAAAEBGV5ZQCwAAAADAAAAAMBRFhCQ7%OSaEPHn11XVjGoPYz35sBAAAAmAUAAAUAAAA0AAAAcAEAALwBAABEAgAAHAUAAFJERUY0AQAAAQAAAEgAAAABAAAAHAAAAAAE:v8AAQAAAAEAADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAJEdsb2JhbHMAq6urPAAAAAQAAABgAAAAwAAAAAAAAAAAAAAAwAAAAAAAAABAAAAAAgAAAMQAAAAAAAAA1AAAAEAAAAAsAAAAAgAAANgAAAAAAAAA6AAAAHAAAABAAAAAAgAAAMQAAAAAAAAA7AAAALAAAAAMAAAAAgAAAPAAAAAAAAAAVwCrqwMAAwAEAAQAAAAAAAAAAABOAKurAwADAAMAAwAAAAAAAAAAAFdWUABleWUAAQADAAEAAwAAAAAAAAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dORAAAAAIAAAAIAAAAOAAAAAAAAAAAAAAAAwAAAAAAAAADAwAAOAAAAAEAAAAAAAAAAwAAAAEAAAAPDwAAVEVYQ09PUkQAq6urT1NHToAAAAAEAAAACAAAAGgAAAAAAAAAAAAAAAMAAAAAAAAABwgAAGgAAAABAAAAAAAAAAMAAAABAAAABwgAAGgAAAACAAAAAAAAAAMAAAACAAAABwgAAHEAAAAAAAAAAQAAAAMAAAADAAAADwAAAFRFWENPT1JEAFNWX1Bvc2l0aW9uAKurq1NIRFLQAgAAQAABALQAAABZAAAERo4gAAAAAAAMAAAAXwAAAzIQEAAAAAAAXwAAA:IQEAABAAAAZQAAA3IgEAAAAAAAZQAAA3IgEAABAAAAZQAAA3IgEAACAAAAZwAABPIgEAADAAAAAQAAAGgAAAIDAAAANgAABXIAEAAAAAAARhIQAAEAAAA2AAAFggAQAAAAAAABQAAAAACAPxEAAAgSABAAAQAAAEYOEAAAAAAARo4gAAAAAAAAAAAAEQAACCIAEAABAAAARg4QAAAAAABGjiAAAAAAAAEAAAARAAAIQgAQAAEAAABGDhAAAAAAAEaOIAAAAAAAAgAAAAAAAAlyIBAAAAAAAEYCEIBBAAAAAQAAAEaCIAAAAAAACwAAADYAAAVyIBAAAgAAAEYCEAABAAAANgAABTIAEAABAAAARhAQAAAAAAA2AAAFQgAQAAEAAAA6EBAAAQAAABAAAAgSABAAAgAAAEYCEAABAAAARoIgAAAAAAAEAAAAEAAACCIAEAACAAAARgIQAAEAAABGgiAAAAAAAAUAAAAQAAAIQgAQAAIAAABGAhAAAQAAAEaCIAAAAAAABgAAABAAAAcSABAAAQAAAEYCEAACAAAARgIQAAIAAABEAAAFEgAQAAEAAAAKABAAAQAAADgAAAdyIBAAAQAAAAYAEAABAAAARgIQAAIAAAARAAAIEgAQAAEAAABGDhAAAAAAAEaOIAAAAAAACQAAABEAAAgiABAAAQAAAEYOEAAAAAAARo4gAAAAAAAKAAAAAAAABxIAEAABAAAAGgAQAAEAAAAKABAAAQAAADYAAAWCIBAAAwAAABoAEAABAAAAOAAAB0IgEAADAAAACgAQAAEAAAABQAAAAAAAPxEAAAgSIBAAAwAAAEYOEAAAAAAARo4gAAAAAAAHAAAAEQAACCIgEAADAAAARg4QAAAAAABGjiAAAAAAAAgAAAA%AAABU1RBVHQAAAAXAAAAAwAAAAAAAAAGAAAAEAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHex_mesh_fragData0 = "s1220:AAAARFhCQ5fl%xOEr5zxbtT2f:l5FhgBAAAAkAMAAAUAAAA0AAAAjAAAAMAAAAAMAQAAFAMAAFJERUZQAAAAAAAAAAAAAAAAAAAAHAAAAAAE::8AAQAAHAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dOLAAAAAEAAAAIAAAAIAAAAAAAAAAAAAAAAwAAAAAAAAAHBwAAVEVYQ09PUkQAq6urT1NHTkQAAAACAAAACAAAADgAAAAAAAAAAAAAAAMAAAAAAAAADwAAADgAAAABAAAAAAAAAAMAAAABAAAADwAAAFNWX1RhcmdldACrq1NIRFIAAgAAQAAAAIAAAABiEAADchAQAAAAAABlAAAD8iAQAAAAAABlAAAD8iAQAAEAAABoAAACAwAAAA0ABAMBQAAA:::::xAAAAcSABAAAAAAAEYSEAAAAAAARhIQAAAAAABEAAAFEgAQAAAAAAAKABAAAAAAADgAAAdyABAAAAAAAAYAEAAAAAAAJhkQAAAAAAAAAAAJggAQAAAAAAAqABCAgQAAAAAAAAAaABCAgQAAAAAAAAAAAAAIggAQAAAAAAAKABCAgQAAAAAAAAA6ABAAAAAAAA4AAAdyABAAAAAAAEYCEAAAAAAA9g8QAAAAAAAAAAALMgAQAAEAAABmChCAwQAAAAAAAAACQAAAAACAPwAAgD8AAAAAAAAAAB0AAApyABAAAgAAAEYCEAAAAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAA3AAAPkgAQAAAAAABWCRAAAgAAAAJAAAAAAIA:AAAAAAAAAAAAAIA:AkAAAAAAgL8AAAAAAAAAAAAAgL84AAAHkgAQAAAAAAAGDBAAAAAAAAYEEAABAAAANwAACTIgEAAAAAAABgAQAAIAAACWBRAAAAAAAMYAEAAAAAAANgAACMIgEAAAAAAAAkAAAAAAAAAAAAAAzczMPYAAgD02AAAI8iAQAAEAAAACQAAAAAAAAOPN2z8BAIBAcf1:Qz4AAAFTVEFUdAAAAA8AAAADAAAAAAAAAAMAAAAJAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHex_mesh_vertData0 = "s1580:Am5vcgAAcG9zAAEBJEdsb2JhbHMAAAJOAAAAAAAsAAAAAwNXVlAAMAAAAEAAAAAEBERYQkOUFphmEkryQPQiA0vQbvwDAQAAAHAEAAAFAAAANAAAACgBAAB0AQAAzAEAAPQDAABSREVG7AAAAAEAAABIAAAAAQAAABwAAAAABP7:AAEAALgAAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAACRHbG9iYWxzAKurqzwAAAACAAAAYAAAAHAAAAAAAAAAAAAAAJAAAAAAAAAALAAAAAIAAACUAAAAAAAAAKQAAAAwAAAAQAAAAAIAAACoAAAAAAAAAE4Aq6sDAAMAAwADAAAAAAAAAAAAV1ZQAAMAAwAEAAQAAAAAAAAAAABNaWNyb3NvZnQgKFIpIEhMU0wgU2hhZGVyIENvbXBpbGVyIDYuMy45NjAwLjE2Mzg0AKurSVNHTkQAAAACAAAACAAAADgAAAAAAAAAAAAAAAMAAAAAAAAAAwMAADgAAAABAAAAAAAAAAMAAAABAAAADw8AAFRFWENPT1JEAKurq09TR05QAAAAAgAAAAgAAAA4AAAAAAAAAAAAAAADAAAAAAAAAAcIAABBAAAAAAAAAAEAAAADAAAAAQAAAA8AAABURVhDT09SRABTVl9Qb3NpdGlvbgCrq6tTSERSIAIAAEAAAQCIAAAAWQAABEaOIAAAAAAABwAAAF8AAAMyEBAAAAAAAF8AAAPyEBAAAQAAAGUAAANyIBAAAAAAAGcAAATyIBAAAQAAAAEAAABoAAACAgAAADYAAAUyABAAAAAAAEYQEAAAAAAANgAABUIAEAAAAAAAOhAQAAEAAAAQAAAIEgAQAAEAAABGAhAAAAAAAEaCIAAAAAAAAAAAABAAAAgiABAAAQAAAEYCEAAAAAAARoIgAAAAAAABAAAAEAAACEIAEAABAAAARgIQAAAAAABGgiAAAAAAAAIAAAAQAAAHEgAQAAAAAABGAhAAAQAAAEYCEAABAAAARAAABRIAEAAAAAAACgAQAAAAAAA4AAAHciAQAAAAAAAGABAAAAAAAEYCEAABAAAANgAABXIAEAAAAAAARhIQAAEAAAA2AAAFggAQAAAAAAABQAAAAACAPxEAAAgSABAAAQAAAEYOEAAAAAAARo4gAAAAAAAFAAAAEQAACCIAEAABAAAARg4QAAAAAABGjiAAAAAAAAYAAAAAAAAHEgAQAAEAAAAaABAAAQAAAAoAEAABAAAANgAABYIgEAABAAAAGgAQAAEAAAA4AAAHQiAQAAEAAAAKABAAAQAAAAFAAAAAAAA:EQAACBIgEAABAAAARg4QAAAAAABGjiAAAAAAAAMAAAARAAAIIiAQAAEAAABGDhAAAAAAAEaOIAAAAAAABAAAAD4AAAFTVEFUdAAAABIAAAACAAAAAAAAAAQAAAAMAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHex_shadowmap_fragData0 = "s442:AAAARFhCQz0AkoNhH5PsWEwT4RdGesIBAAAASAEAAAUAAAA0AAAAjAAAAJwAAACsAAAAzAAAAFJERUZQAAAAAAAAAAAAAAAAAAAAHAAAAAAE::8AAQAAHAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dOCAAAAAAAAAAIAAAAT1NHTggAAAAAAAAACAAAAFNIRFIYAAAAQAAAAAYAAAANAAQDAUAAAP::::8%AAABU1RBVHQAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHex_shadowmap_vertData0 = "s1111:AXBvcwAAASRHbG9iYWxzAAABTFdWUAAAAAAAQAAAAAQERFhCQ3xflQ:oR9:Lx6mX3k:DcrwBAAAAIAMAAAUAAAA0AAAAAAEAADQBAABoAQAApAIAAFJERUbEAAAAAQAAAEgAAAABAAAAHAAAAAAE:v8AAQAAkAAAADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAJEdsb2JhbHMAq6urPAAAAAEAAABgAAAAQAAAAAAAAAAAAAAAeAAAAAAAAABAAAAAAgAAAIAAAAAAAAAATFdWUACrq6sDAAMABAAEAAAAAAAAAAAATWljcm9zb2Z0IChSKSBITFNMIFNoYWRlciBDb21waWxlciA2LjMuOTYwMC4xNjM4NACrq0lTR04sAAAAAQAAAAgAAAAgAAAAAAAAAAAAAAADAAAAAAAAAA8HAABURVhDT09SRACrq6tPU0dOLAAAAAEAAAAIAAAAIAAAAAAAAAABAAAAAwAAAAAAAAAPAAAAU1ZfUG9zaXRpb24AU0hEUjQBAABAAAEATQAAAFkAAARGjiAAAAAAAAQAAABfAAADchAQAAAAAABnAAAE8iAQAAAAAAABAAAAaAAAAgIAAAA2AAAFcgAQAAAAAABGEhAAAAAAADYAAAWCABAAAAAAAAFAAAAAAIA:EQAACBIAEAABAAAARg4QAAAAAABGjiAAAAAAAAIAAAARAAAIIgAQAAEAAABGDhAAAAAAAEaOIAAAAAAAAwAAAAAAAAcSABAAAQAAABoAEAABAAAACgAQAAEAAAA2AAAFgiAQAAAAAAAaABAAAQAAADgAAAdCIBAAAAAAAAoAEAABAAAAAUAAAAAAAD8RAAAIEiAQAAAAAABGDhAAAAAAAEaOIAAAAAAAAAAAABEAAAgiIBAAAAAAAEYOEAAAAAAARo4gAAAAAAABAAAAPgAAAVNUQVR0AAAACgAAAAIAAAAAAAAAAgAAAAYAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHex_translucent_fragData0 = "s3720:AAEkR2xvYmFscwAACWNhc0RhdGEAAAAAAEABAAAEAXNoaXJyAEABAABwAAAABAFiYWNrZ3JvdW5kQ29sALABAAAMAAAAAwFlbnZtYXBTdHJlbmd0aAC8AQAABAAAAAEBc3VuRGlyAMABAAAMAAAAAwFyZWNlaXZlU2hhZG93AMwBAAAEAAAAAQFleWUA0AEAAAwAAAADAXNoYWRvd3NCaWFzANwBAAAEAAAAAQFzdW5Db2wA4AEAAAwAAAADAURYQkNPK:PVOHCWuJ0VSTDTKsL%AQAAACgKAAAFAAAANAAAAFgCAADgAgAALAMAAKwJAABSREVGHAIAAAEAAABIAAAAAQAAABwAAAAABP::AAEAAOcBAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAACRHbG9iYWxzAKurqzwAAAAJAAAAYAAAAPABAAAAAAAAAAAAADgBAAAAAAAAQAEAAAAAAABAAQAAAAAAAFABAABAAQAAcAAAAAIAAABYAQAAAAAAAGgBAACwAQAADAAAAAIAAAB4AQAAAAAAAIgBAAC8AQAABAAAAAIAAACYAQAAAAAAAKgBAADAAQAADAAAAAAAAAB4AQAAAAAAAK8BAADMAQAABAAAAAAAAADAAQAAAAAAANABAADQAQAADAAAAAAAAAB4AQAAAAAAANQBAADcAQAABAAAAAAAAACYAQAAAAAAAOABAADgAQAADAAAAAAAAAB4AQAAAAAAAGNhc0RhdGEAAQADAAEABAAUAAAAAAAAAHNoaXJyAKurAQADAAEABAAHAAAAAAAAAGJhY2tncm91bmRDb2wAq6sBAAMAAQADAAAAAAAAAAAAZW52bWFwU3RyZW5ndGgAqwAAAwABAAEAAAAAAAAAAABzdW5EaXIAcmVjZWl2ZVNoYWRvdwCrq6sAAAEAAQABAAAAAAAAAAAAZXllAHNoYWRvd3NCaWFzAHN1bkNvbABNaWNyb3NvZnQgKFIpIEhMU0wgU2hhZGVyIENvbXBpbGVyIDYuMy45NjAwLjE2Mzg0AKurq0lTR06AAAAABAAAAAgAAABoAAAAAAAAAAAAAAADAAAAAAAAAAcAAABoAAAAAQAAAAAAAAADAAAAAQAAAAcHAABoAAAAAgAAAAAAAAADAAAAAgAAAAcAAABxAAAAAAAAAAEAAAADAAAAAwAAAA8EAABURVhDT09SRABTVl9Qb3NpdGlvbgCrq6tPU0dORAAAAAIAAAAIAAAAOAAAAAAAAAAAAAAAAwAAAAAAAAAPAAAAOAAAAAEAAAAAAAAAAwAAAAEAAAAPAAAAU1ZfVGFyZ2V0AKurU0hEUngGAABAAAAAngEAAFkAAARGjiAAAAAAABwAAABiEAADchAQAAEAAABkIAAEQhAQAAMAAAABAAAAZQAAA:IgEAAAAAAAZQAAA:IgEAABAAAAaAAAAgQAAAA2AAAGMgAQAAAAAADmiiAAAAAAABgAAAA2AAAGQgAQAAAAAAAKgCAAAAAAABkAAAA4AAALcgAQAAEAAABGgiAAAAAAABoAAAACQAAAhqvbPoar2z6Gq9s%AAAAABAAAAeCABAAAAAAAEYSEAABAAAARhIQAAEAAABEAAAFggAQAAAAAAA6ABAAAAAAADgAAAdyABAAAgAAAPYPEAAAAAAAlhQQAAEAAAA4AAAHMgAQAAMAAACWBRAAAgAAAJYFEAACAAAAOAAAB%IAEAADAAAABgkQAAAAAABWBRAAAwAAADIAAAqCABAAAAAAAAoAEAACAAAACgAQAAIAAAAKABCAQQAAAAMAAAA4AAAKcgAQAAMAAACWBxAAAwAAAAJAAABxPT4:cT0%P3E9Pj8AAAAAMgAACXIAEAABAAAARgIQAAEAAAD2DxAAAAAAAEYCEAADAAAAMgAADXIAEAABAAAARoIgAAAAAAAUAAAAAkAAAMbfYj:G32I:xt9iPwAAAABGAhAAAQAAADIAAA1yABAAAAAAAEYCEIBBAAAAAAAAAAJAAAAqp30%Kqd9PiqnfT4AAAAARgIQAAEAAAA4AAAIcgAQAAEAAAAGABAAAgAAAEaCIAAAAAAAFwAAADgAAApyABAAAQAAAEYCEAABAAAAAkAAAIarWz%Gq1s:hqtbPwAAAAAyAAAKcgAQAAAAAABGAhAAAQAAAFYFEIBBAAAAAgAAAEYCEAAAAAAAOAAACHIAEAABAAAABgAQAAIAAACWhyAAAAAAABkAAAA4AAAHcgAQAAEAAACmChAAAgAAAEYCEAABAAAAMgAADHIAEAAAAAAARgIQAAEAAAACQAAAhqtbP4arWz%Gq1s:AAAAAEYCEAAAAAAAOAAACRIAEAABAAAAGgAQgEEAAAACAAAAOoAgAAAAAAAXAAAAOAAACWIAEAABAAAAVgUQgEEAAAACAAAABoEgAAAAAAAYAAAAOAAAB3IAEAABAAAApgoQAAIAAABGAhAAAQAAADIAAAxyABAAAAAAAEYCEAABAAAAAkAAAIarWz%Gq1s:hqtbPwAAAABGAhAAAAAAADgAAAhyABAAAQAAAAYAEAACAAAAlocgAAAAAAAWAAAAMgAADHIAEAAAAAAARgIQAAEAAAACQAAAafyCP2n8gj9p:II:AAAAAEYCEAAAAAAAOAAACRIAEAABAAAAGgAQgEEAAAACAAAAOoAgAAAAAAAUAAAAOAAACWIAEAABAAAAVgUQgEEAAAACAAAABoEgAAAAAAAVAAAAMgAADHIAEAAAAAAARgIQAAEAAAACQAAAafyCP2n8gj9p:II:AAAAAEYCEAAAAAAAOAAACDIAEAABAAAApgoQAAIAAADmiiAAAAAAABUAAAA4AAAIQgAQAAEAAAAqABAAAgAAAAqAIAAAAAAAFgAAADIAAAxyABAAAAAAAEYCEAABAAAAAkAAAGn8gj9p:II:afyCPwAAAABGAhAAAAAAADgAAAtyABAAAQAAAEaCIAAAAAAAGwAAAAJAAAAK1yM9CtcjPQrXIz0AAAAAMgAADHIAEAAAAAAARgIQAAAAAAACQAAAAAAAAOnXrz7OzEw:AAAAAEYCEAABAAAAMgAADXIAEAAAAAAARgIQAAAAAAD2jyAAAAAAABsAAAACQAAAAAAAAOPN2z8BAIBAAAAAADIAAAqCABAAAAAAACoQEIBBAAAAAwAAAAFAAABmZmY:AUAAAAAAgD84AAAHEgAQAAEAAAA6ABAAAAAAADoAEAAAAAAAOAAAB4IAEAAAAAAAOgAQAAAAAAAKABAAAQAAADgAAAryABAAAAAAAEYOEAAAAAAAAkAAAPFjTD3xY0w98WNMPWdZw0w0AAAHggAQAAAAAAA6ABAAAAAAAAFAAAAK1yM8MwAAB4IAEAAAAAAAOgAQAAAAAAABQAAAAIA7RTgAAAdyIBAAAAAAAPYPEAAAAAAARgIQAAAAAAA4AAAHEiAQAAEAAAA6ABAAAAAAAAFAAADxY8w9NgAABYIgEAAAAAAAAUAAAPFjzD02AAAI4iAQAAEAAAACQAAAAAAAAAAAAAAAAAAAAACAPz4AAAFTVEFUdAAAAC0AAAAEAAAAAAAAAAQAAAAoAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+kha_Shaders.hoverHex_translucent_vertData0 = "s2010:Am5vcgAAcG9zAAEBJEdsb2JhbHMAAARXAAAAAABAAAAABAROAEAAAAAsAAAAAwNXVlAAcAAAAEAAAAAEBGV5ZQCwAAAADAAAAAMBRFhCQ7%OSaEPHn11XVjGoPYz35sBAAAAmAUAAAUAAAA0AAAAcAEAALwBAABEAgAAHAUAAFJERUY0AQAAAQAAAEgAAAABAAAAHAAAAAAE:v8AAQAAAAEAADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAJEdsb2JhbHMAq6urPAAAAAQAAABgAAAAwAAAAAAAAAAAAAAAwAAAAAAAAABAAAAAAgAAAMQAAAAAAAAA1AAAAEAAAAAsAAAAAgAAANgAAAAAAAAA6AAAAHAAAABAAAAAAgAAAMQAAAAAAAAA7AAAALAAAAAMAAAAAgAAAPAAAAAAAAAAVwCrqwMAAwAEAAQAAAAAAAAAAABOAKurAwADAAMAAwAAAAAAAAAAAFdWUABleWUAAQADAAEAAwAAAAAAAAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dORAAAAAIAAAAIAAAAOAAAAAAAAAAAAAAAAwAAAAAAAAADAwAAOAAAAAEAAAAAAAAAAwAAAAEAAAAPDwAAVEVYQ09PUkQAq6urT1NHToAAAAAEAAAACAAAAGgAAAAAAAAAAAAAAAMAAAAAAAAABwgAAGgAAAABAAAAAAAAAAMAAAABAAAABwgAAGgAAAACAAAAAAAAAAMAAAACAAAABwgAAHEAAAAAAAAAAQAAAAMAAAADAAAADwAAAFRFWENPT1JEAFNWX1Bvc2l0aW9uAKurq1NIRFLQAgAAQAABALQAAABZAAAERo4gAAAAAAAMAAAAXwAAAzIQEAAAAAAAXwAAA:IQEAABAAAAZQAAA3IgEAAAAAAAZQAAA3IgEAABAAAAZQAAA3IgEAACAAAAZwAABPIgEAADAAAAAQAAAGgAAAIDAAAANgAABXIAEAAAAAAARhIQAAEAAAA2AAAFggAQAAAAAAABQAAAAACAPxEAAAgSABAAAQAAAEYOEAAAAAAARo4gAAAAAAAAAAAAEQAACCIAEAABAAAARg4QAAAAAABGjiAAAAAAAAEAAAARAAAIQgAQAAEAAABGDhAAAAAAAEaOIAAAAAAAAgAAAAAAAAlyIBAAAAAAAEYCEIBBAAAAAQAAAEaCIAAAAAAACwAAADYAAAVyIBAAAgAAAEYCEAABAAAANgAABTIAEAABAAAARhAQAAAAAAA2AAAFQgAQAAEAAAA6EBAAAQAAABAAAAgSABAAAgAAAEYCEAABAAAARoIgAAAAAAAEAAAAEAAACCIAEAACAAAARgIQAAEAAABGgiAAAAAAAAUAAAAQAAAIQgAQAAIAAABGAhAAAQAAAEaCIAAAAAAABgAAABAAAAcSABAAAQAAAEYCEAACAAAARgIQAAIAAABEAAAFEgAQAAEAAAAKABAAAQAAADgAAAdyIBAAAQAAAAYAEAABAAAARgIQAAIAAAARAAAIEgAQAAEAAABGDhAAAAAAAEaOIAAAAAAACQAAABEAAAgiABAAAQAAAEYOEAAAAAAARo4gAAAAAAAKAAAAAAAABxIAEAABAAAAGgAQAAEAAAAKABAAAQAAADYAAAWCIBAAAwAAABoAEAABAAAAOAAAB0IgEAADAAAACgAQAAEAAAABQAAAAAAAPxEAAAgSIBAAAwAAAEYOEAAAAAAARo4gAAAAAAAHAAAAEQAACCIgEAADAAAARg4QAAAAAABGjiAAAAAAAAgAAAA%AAABU1RBVHQAAAAXAAAAAwAAAAAAAAAGAAAAEAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 kha_Shaders.line_deferred_fragData0 = "s698:AAAARFhCQ8aQUxceHZ1r:Mwwvi0rA94BAAAACAIAAAUAAAA0AAAAjAAAAMAAAAAMAQAAjAEAAFJERUZQAAAAAAAAAAAAAAAAAAAAHAAAAAAE::8AAQAAHAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dOLAAAAAEAAAAIAAAAIAAAAAAAAAAAAAAAAwAAAAAAAAAHBwAAVEVYQ09PUkQAq6urT1NHTkQAAAACAAAACAAAADgAAAAAAAAAAAAAAAMAAAAAAAAADwAAADgAAAABAAAAAAAAAAMAAAABAAAADwAAAFNWX1RhcmdldACrq1NIRFJ4AAAAQAAAAB4AAABiEAADchAQAAAAAABlAAAD8iAQAAAAAABlAAAD8iAQAAEAAAA2AAAI8iAQAAAAAAACQAAAAACAPwAAgD8AAAAAAACAPzYAAAVyIBAAAQAAAEYSEAAAAAAANgAABYIgEAABAAAAAUAAAAAAgD8%AAABU1RBVHQAAAAEAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 kha_Shaders.line_fragData0 = "s607:AAAARFhCQ1ZLRjD3ZrzN:hatSzaD27EBAAAAxAEAAAUAAAA0AAAAjAAAAMAAAAD0AAAASAEAAFJERUZQAAAAAAAAAAAAAAAAAAAAHAAAAAAE::8AAQAAHAAAAE1pY3Jvc29mdCAoUikgSExTTCBTaGFkZXIgQ29tcGlsZXIgNi4zLjk2MDAuMTYzODQAq6tJU0dOLAAAAAEAAAAIAAAAIAAAAAAAAAAAAAAAAwAAAAAAAAAHBwAAVEVYQ09PUkQAq6urT1NHTiwAAAABAAAACAAAACAAAAAAAAAAAAAAAAMAAAAAAAAADwAAAFNWX1RhcmdldACrq1NIRFJMAAAAQAAAABMAAABiEAADchAQAAAAAABlAAAD8iAQAAAAAAA2AAAFciAQAAAAAABGEhAAAAAAADYAAAWCIBAAAAAAAAFAAAAAAIA:PgAAAVNUQVR0AAAAAwAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 kha_Shaders.line_vertData0 = "s1280:AmNvbAAAcG9zAAEBJEdsb2JhbHMAAAFWaWV3UHJvamVjdGlvbgAAAAAAQAAAAAQERFhCQ9VAoSrt3%5HfqkA07agd9IBAAAAkAMAAAUAAAA0AAAACAEAAFQBAACsAQAAFAMAAFJERUbMAAAAAQAAAEgAAAABAAAAHAAAAAAE:v8AAQAAmAAAADwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAJEdsb2JhbHMAq6urPAAAAAEAAABgAAAAQAAAAAAAAAAAAAAAeAAAAAAAAABAAAAAAgAAAIgAAAAAAAAAVmlld1Byb2plY3Rpb24AqwMAAwAEAAQAAAAAAAAAAABNaWNyb3NvZnQgKFIpIEhMU0wgU2hhZGVyIENvbXBpbGVyIDYuMy45NjAwLjE2Mzg0AKurSVNHTkQAAAACAAAACAAAADgAAAAAAAAAAAAAAAMAAAAAAAAABwcAADgAAAABAAAAAAAAAAMAAAABAAAABwcAAFRFWENPT1JEAKurq09TR05QAAAAAgAAAAgAAAA4AAAAAAAAAAAAAAADAAAAAAAAAAcIAABBAAAAAAAAAAEAAAADAAAAAQAAAA8AAABURVhDT09SRABTVl9Qb3NpdGlvbgCrq6tTSERSYAEAAEAAAQBYAAAAWQAABEaOIAAAAAAABAAAAF8AAANyEBAAAAAAAF8AAANyEBAAAQAAAGUAAANyIBAAAAAAAGcAAATyIBAAAQAAAAEAAABoAAACAgAAADYAAAVyIBAAAAAAAEYSEAAAAAAANgAABXIAEAAAAAAARhIQAAEAAAA2AAAFggAQAAAAAAABQAAAAACAPxEAAAgSABAAAQAAAEYOEAAAAAAARo4gAAAAAAACAAAAEQAACCIAEAABAAAARg4QAAAAAABGjiAAAAAAAAMAAAAAAAAHEgAQAAEAAAAaABAAAQAAAAoAEAABAAAANgAABYIgEAABAAAAGgAQAAEAAAA4AAAHQiAQAAEAAAAKABAAAQAAAAFAAAAAAAA:EQAACBIgEAABAAAARg4QAAAAAABGjiAAAAAAAAAAAAARAAAIIiAQAAEAAABGDhAAAAAAAEaOIAAAAAAAAQAAAD4AAAFTVEFUdAAAAAsAAAACAAAAAAAAAAQAAAAGAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
