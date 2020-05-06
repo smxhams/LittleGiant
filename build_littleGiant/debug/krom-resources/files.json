@@ -13,6 +13,10 @@
 				{
 					"name": "wnormal",
 					"type": "vec3"
+				},
+				{
+					"name": "texCoord",
+					"type": "vec2"
 				}
 			],
 			"outputs": [
@@ -21,7 +25,16 @@
 					"type": "vec4[]"
 				}
 			],
-			"uniforms": [],
+			"uniforms": [
+				{
+					"name": "ImageTexture",
+					"type": "sampler2D"
+				},
+				{
+					"name": "param_RGB",
+					"type": "vec3"
+				}
+			],
 			"types": []
 		},
 		{
@@ -39,6 +52,10 @@
 					"type": "vec4"
 				},
 				{
+					"name": "tex",
+					"type": "vec2"
+				},
+				{
 					"name": "nor",
 					"type": "vec2"
 				},
@@ -53,11 +70,19 @@
 			],
 			"outputs": [
 				{
+					"name": "texCoord",
+					"type": "vec2"
+				},
+				{
 					"name": "wnormal",
 					"type": "vec3"
 				}
 			],
 			"uniforms": [
+				{
+					"name": "texUnpack",
+					"type": "float"
+				},
 				{
 					"name": "N",
 					"type": "mat3"
@@ -174,11 +199,11 @@
 					"type": "vec3"
 				},
 				{
-					"name": "eyeDir",
-					"type": "vec3"
+					"name": "texCoord",
+					"type": "vec2"
 				},
 				{
-					"name": "mposition",
+					"name": "eyeDir",
 					"type": "vec3"
 				},
 				{
@@ -204,6 +229,14 @@
 				{
 					"name": "shirr",
 					"type": "vec4[]"
+				},
+				{
+					"name": "ImageTexture",
+					"type": "sampler2D"
+				},
+				{
+					"name": "param_RGB",
+					"type": "vec3"
 				},
 				{
 					"name": "backgroundCol",
@@ -255,6 +288,10 @@
 					"type": "vec4"
 				},
 				{
+					"name": "tex",
+					"type": "vec2"
+				},
+				{
 					"name": "nor",
 					"type": "vec2"
 				},
@@ -269,11 +306,11 @@
 			],
 			"outputs": [
 				{
-					"name": "wposition",
-					"type": "vec3"
+					"name": "texCoord",
+					"type": "vec2"
 				},
 				{
-					"name": "mposition",
+					"name": "wposition",
 					"type": "vec3"
 				},
 				{
@@ -287,12 +324,12 @@
 			],
 			"uniforms": [
 				{
-					"name": "W",
-					"type": "mat4"
+					"name": "texUnpack",
+					"type": "float"
 				},
 				{
-					"name": "posUnpack",
-					"type": "float"
+					"name": "W",
+					"type": "mat4"
 				},
 				{
 					"name": "N",

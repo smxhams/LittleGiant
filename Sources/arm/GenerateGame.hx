@@ -1,6 +1,9 @@
 package arm;
 import iron.object.Object;
 import iron.system.Time;
+import iron.Scene;
+import iron.math.Vec4;
+import iron.system.Tween;
 
 class GenerateGame extends iron.Trait {
 	@prop 
@@ -17,7 +20,7 @@ class GenerateGame extends iron.Trait {
 
 		notifyOnInit(function() {
 			//Generates grid
-			var radius = 10; //Final radius is this minus 1
+			var radius = 8; //Final radius is this minus 1
 			var data = InitGame.inst.hexTilesData;
 			var index = 0;
 			var distance = 0;
@@ -50,6 +53,21 @@ class GenerateGame extends iron.Trait {
 		});
 
 		notifyOnUpdate(function() {
+			//Camera movement
+			var camera = Scene.active.getChild("Camera");
+			iron.system.Tween.to({
+				target: camera.transform,
+				props: {
+					loc: new Vec4(0.0, -InitGame.inst.camDistance*0.75, InitGame.inst.camDistance),
+					//scale:
+					//rot:
+				},
+				duration: totalTime,
+				done: function() {},
+				ease: Ease.ExpoInOut
+			});
+
+
 			var data = InitGame.inst.hexTilesData;
 			while ((currentTick <= totalTicks) && (currentTime > (currentTick*tickInterval))) {
 				// First half place tiles

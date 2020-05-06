@@ -14,6 +14,9 @@ class InitGame extends iron.Trait {
 	public var difficulty:String;
 
 
+	public var camDistance:Float = 10.0;
+
+
 	//Sound
 	public var music1:AudioChannel;
 	public var music2:AudioChannel;

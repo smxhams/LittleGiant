@@ -24,8 +24,8 @@
 -D rp_antialiasing=SMAA
 -D rp_supersampling=1
 -D rp_ssgi=SSAO
+-D rp_translucency
 -D arm_audio
--D arm_patch
 -D arm_noembed
 -D arm_soundcompress
 -D arm_debug
@@ -56,21 +56,19 @@
 -D kha_version=1810
 -D kha_project_name=littleGiant
 -js krom\krom.js.temp
-arm.MainGame
---macro keep('arm.MainGame')
 arm.GenerateGame
 --macro keep('arm.GenerateGame')
-arm.MainMenu
---macro keep('arm.MainMenu')
-armory.trait.internal.LivePatch
---macro keep('armory.trait.internal.LivePatch')
+armory.trait.internal.Bridge
+--macro keep('armory.trait.internal.Bridge')
 armory.trait.internal.DebugConsole
 --macro keep('armory.trait.internal.DebugConsole')
 armory.trait.internal.CanvasScript
 --macro keep('armory.trait.internal.CanvasScript')
+arm.MainGame
+--macro keep('arm.MainGame')
+arm.MainMenu
+--macro keep('arm.MainMenu')
 arm.InitGame
 --macro keep('arm.InitGame')
-armory.trait.internal.Bridge
---macro keep('armory.trait.internal.Bridge')
 --times
 -main Main
