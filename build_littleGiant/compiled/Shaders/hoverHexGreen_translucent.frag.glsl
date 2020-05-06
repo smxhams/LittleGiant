@@ -2,19 +2,14 @@
 #include "compiled.inc"
 #include "std/light.glsl"
 #include "std/shirr.glsl"
-#include "std/shadows.glsl"
 in vec3 wnormal;
 in vec3 eyeDir;
-in vec3 wposition;
 out vec4 fragColor[2];
 uniform vec3 backgroundCol;
 uniform float envmapStrength;
 uniform bool receiveShadow;
 uniform vec3 sunCol;
 uniform vec3 sunDir;
-uniform sampler2DShadow shadowMap;
-uniform float shadowsBias;
-uniform vec3 eye;
 void main() {
 vec3 n = normalize(wnormal);
 
@@ -49,9 +44,6 @@ vec3 n = normalize(wnormal);
 	float sdotNL = dot(n, sunDir);
 	float sdotNH = dot(n, sh);
 	float sdotVH = dot(vVec, sh);
-	if (receiveShadow) {
-	svisibility = shadowTestCascade(shadowMap, eye, wposition + n * shadowsBias * 10, shadowsBias);
-	}
 	direct += (lambertDiffuseBRDF(albedo, sdotNL) + specularBRDF(f0, roughness, sdotNL, sdotNH, dotNV, sdotVH) * specular) * sunCol * svisibility;
 	if (emission > 0.0) {
 	    direct = vec3(0.0);

@@ -97,7 +97,8 @@ class MainGame extends iron.Trait {
 			var hex:Object = rb.object.parent;
 			if (lastHover != hex.properties['id']) {
 				lastHover = hex.properties['id'];
-				trace(hex.properties['id']);
+				InitGame.inst.currentHover = hex.properties['id'];
+				//trace(hex.properties['id']);
 				hoverHex.transform.loc.x = hex.transform.loc.x;
 				hoverHex.transform.loc.y = hex.transform.loc.y;
 				hoverHex.transform.buildMatrix();
@@ -110,7 +111,6 @@ class MainGame extends iron.Trait {
 				if (hoverHex.getChild('hoverHexBlue') != null) hoverHex.getChild('hoverHexBlue').visible = false;
 			}
 		}
-
 	}
 
 	function roundValue(n:Float, prec:Int) {

@@ -6,9 +6,11 @@ class InitGame extends iron.Trait {
 
 	//Game libraries
 	public var hexTilesObjects = new List<Object>();
+	public var hexTileCelestials = new List<Object>();
 	public var hexTilesData = new Array<Dynamic>();
 	public var homeIndex:Int;
 	public var totalTiles:Int;
+	public var currentHover:Int;
 	
 
 	public var difficulty:String;
@@ -26,7 +28,18 @@ class InitGame extends iron.Trait {
 	public var sfx2:AudioChannel;
 	public var ambience:AudioChannel;
 
-
+	public var hexObjTypes:Map<String, Int> = [
+		'Dust' => 1,
+		'Gas' => 1000,
+		'Rock' => 8000,
+		'Asteroid' => 15000,
+		'SmallPlanet' => 40000,
+		'LargePlanet' => 100000,
+		'RedDwarf' => 200000,
+		'Supergiant' => 500000,
+		'Neutron' => 1000000,
+		'Blackhole' => 5000000
+	];
 
 	public static var inst:InitGame = null;
 
