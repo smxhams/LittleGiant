@@ -1,16 +1,19 @@
 package arm;
 import iron.Scene;
 import iron.system.Input;
+import armory.trait.physics.PhysicsWorld;
+import iron.object.Object;
 
 class MainGame extends iron.Trait {
 	var keyboard:Keyboard;
 	var mouse:Mouse;
 
+	var lastHover:Int;
 	//Cam
 	var camSpeed:Float = 0.5;
 	var camX:Float;
 	var camY:Float;
-	
+
 	public function new() {
 		super();
 
@@ -22,10 +25,17 @@ class MainGame extends iron.Trait {
 			var camera = Scene.active.getChild("Camera");
 			camX = camera.transform.loc.x+0.245;
 			camY = camera.transform.loc.y+0.245;
+
+			iron.Scene.active.spawnObject('hoverHex', null, function(o:Object) {
+				o.visible = false;
+				o.transform.loc.z = 0.0;
+				o.transform.buildMatrix();
+			});
 		});
 
 		notifyOnUpdate(function() {
 			camControl();
+			mouseOver();
 			
 
 		});
@@ -78,6 +88,31 @@ class MainGame extends iron.Trait {
 		}
 		//trace(curCamX + ' : ' + curCamY + ' To go to: ' + camX + ' : ' + camY);
 	}
+
+	function mouseOver() {
+		if (!mouse.moved) return;
+		var hoverHex = Scene.active.getChild('hoverHex');
+		var rb = PhysicsWorld.active.pickClosest(mouse.x, mouse.y);
+		if (rb != null) {
+			var hex:Object = rb.object.parent;
+			if (lastHover != hex.properties['id']) {
+				lastHover = hex.properties['id'];
+				trace(hex.properties['id']);
+				hoverHex.transform.loc.x = hex.transform.loc.x;
+				hoverHex.transform.loc.y = hex.transform.loc.y;
+				hoverHex.transform.buildMatrix();
+				if (hoverHex.getChild('hoverHexBlue') != null) hoverHex.getChild('hoverHexBlue').visible = true;
+			}
+		}
+		else {
+			if (lastHover != null) {
+				lastHover = null;
+				if (hoverHex.getChild('hoverHexBlue') != null) hoverHex.getChild('hoverHexBlue').visible = false;
+			}
+		}
+
+	}
+
 	function roundValue(n:Float, prec:Int) {
 		n = Math.round(n * Math.pow(10, prec));
 		return n;

@@ -1,9 +1,9 @@
 {
 	"files": [
 		{
-			"name": "BLANK_mesh_frag",
+			"name": "Hex_mesh_frag",
 			"files": [
-				"BLANK_mesh.frag.d3d11"
+				"Hex_mesh.frag.d3d11"
 			],
 			"file_sizes": [
 				1
@@ -29,18 +29,14 @@
 				{
 					"name": "ImageTexture",
 					"type": "sampler2D"
-				},
-				{
-					"name": "param_RGB",
-					"type": "vec3"
 				}
 			],
 			"types": []
 		},
 		{
-			"name": "BLANK_mesh_vert",
+			"name": "Hex_mesh_vert",
 			"files": [
-				"BLANK_mesh.vert.d3d11"
+				"Hex_mesh.vert.d3d11"
 			],
 			"file_sizes": [
 				1
@@ -117,77 +113,9 @@
 			]
 		},
 		{
-			"name": "BLANK_shadowmap_frag",
+			"name": "Hex_translucent_frag",
 			"files": [
-				"BLANK_shadowmap.frag.d3d11"
-			],
-			"file_sizes": [
-				1
-			],
-			"type": "shader",
-			"inputs": [],
-			"outputs": [],
-			"uniforms": [],
-			"types": []
-		},
-		{
-			"name": "BLANK_shadowmap_vert",
-			"files": [
-				"BLANK_shadowmap.vert.d3d11"
-			],
-			"file_sizes": [
-				1
-			],
-			"type": "shader",
-			"inputs": [
-				{
-					"name": "pos",
-					"type": "vec4"
-				},
-				{
-					"name": "gl_VertexID",
-					"type": "int"
-				},
-				{
-					"name": "gl_InstanceID",
-					"type": "int"
-				}
-			],
-			"outputs": [],
-			"uniforms": [
-				{
-					"name": "LWVP",
-					"type": "mat4"
-				}
-			],
-			"types": [
-				{
-					"name": "gl_PerVertex",
-					"members": [
-						{
-							"type": "vec4",
-							"name": "gl_Position"
-						},
-						{
-							"type": "float",
-							"name": "gl_PointSize"
-						},
-						{
-							"type": "float[]",
-							"name": "gl_ClipDistance"
-						},
-						{
-							"type": "float[]",
-							"name": "gl_CullDistance"
-						}
-					]
-				}
-			]
-		},
-		{
-			"name": "BLANK_translucent_frag",
-			"files": [
-				"BLANK_translucent.frag.d3d11"
+				"Hex_translucent.frag.d3d11"
 			],
 			"file_sizes": [
 				1
@@ -235,10 +163,6 @@
 					"type": "sampler2D"
 				},
 				{
-					"name": "param_RGB",
-					"type": "vec3"
-				},
-				{
 					"name": "backgroundCol",
 					"type": "vec3"
 				},
@@ -274,9 +198,9 @@
 			"types": []
 		},
 		{
-			"name": "BLANK_translucent_vert",
+			"name": "Hex_translucent_vert",
 			"files": [
-				"BLANK_translucent.vert.d3d11"
+				"Hex_translucent.vert.d3d11"
 			],
 			"file_sizes": [
 				1
@@ -586,6 +510,882 @@
 				1
 			],
 			"type": "font"
+		},
+		{
+			"name": "hoverHexBlue_mesh_frag",
+			"files": [
+				"hoverHexBlue_mesh.frag.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "wnormal",
+					"type": "vec3"
+				}
+			],
+			"outputs": [
+				{
+					"name": "fragColor",
+					"type": "vec4[]"
+				}
+			],
+			"uniforms": [],
+			"types": []
+		},
+		{
+			"name": "hoverHexBlue_mesh_vert",
+			"files": [
+				"hoverHexBlue_mesh.vert.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "pos",
+					"type": "vec4"
+				},
+				{
+					"name": "nor",
+					"type": "vec2"
+				},
+				{
+					"name": "gl_VertexID",
+					"type": "int"
+				},
+				{
+					"name": "gl_InstanceID",
+					"type": "int"
+				}
+			],
+			"outputs": [
+				{
+					"name": "wnormal",
+					"type": "vec3"
+				}
+			],
+			"uniforms": [
+				{
+					"name": "N",
+					"type": "mat3"
+				},
+				{
+					"name": "WVP",
+					"type": "mat4"
+				}
+			],
+			"types": [
+				{
+					"name": "gl_PerVertex",
+					"members": [
+						{
+							"type": "vec4",
+							"name": "gl_Position"
+						},
+						{
+							"type": "float",
+							"name": "gl_PointSize"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_ClipDistance"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_CullDistance"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "hoverHexBlue_shadowmap_frag",
+			"files": [
+				"hoverHexBlue_shadowmap.frag.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [],
+			"outputs": [],
+			"uniforms": [],
+			"types": []
+		},
+		{
+			"name": "hoverHexBlue_shadowmap_vert",
+			"files": [
+				"hoverHexBlue_shadowmap.vert.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "pos",
+					"type": "vec4"
+				},
+				{
+					"name": "gl_VertexID",
+					"type": "int"
+				},
+				{
+					"name": "gl_InstanceID",
+					"type": "int"
+				}
+			],
+			"outputs": [],
+			"uniforms": [
+				{
+					"name": "LWVP",
+					"type": "mat4"
+				}
+			],
+			"types": [
+				{
+					"name": "gl_PerVertex",
+					"members": [
+						{
+							"type": "vec4",
+							"name": "gl_Position"
+						},
+						{
+							"type": "float",
+							"name": "gl_PointSize"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_ClipDistance"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_CullDistance"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "hoverHexBlue_translucent_frag",
+			"files": [
+				"hoverHexBlue_translucent.frag.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "wnormal",
+					"type": "vec3"
+				},
+				{
+					"name": "eyeDir",
+					"type": "vec3"
+				},
+				{
+					"name": "wposition",
+					"type": "vec3"
+				},
+				{
+					"name": "gl_FragCoord",
+					"type": "vec4"
+				}
+			],
+			"outputs": [
+				{
+					"name": "fragColor",
+					"type": "vec4[]"
+				}
+			],
+			"uniforms": [
+				{
+					"name": "casData",
+					"type": "vec4[]"
+				},
+				{
+					"name": "shirr",
+					"type": "vec4[]"
+				},
+				{
+					"name": "backgroundCol",
+					"type": "vec3"
+				},
+				{
+					"name": "envmapStrength",
+					"type": "float"
+				},
+				{
+					"name": "sunDir",
+					"type": "vec3"
+				},
+				{
+					"name": "receiveShadow",
+					"type": "bool"
+				},
+				{
+					"name": "shadowMap",
+					"type": "sampler2DShadow"
+				},
+				{
+					"name": "eye",
+					"type": "vec3"
+				},
+				{
+					"name": "shadowsBias",
+					"type": "float"
+				},
+				{
+					"name": "sunCol",
+					"type": "vec3"
+				}
+			],
+			"types": []
+		},
+		{
+			"name": "hoverHexBlue_translucent_vert",
+			"files": [
+				"hoverHexBlue_translucent.vert.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "pos",
+					"type": "vec4"
+				},
+				{
+					"name": "nor",
+					"type": "vec2"
+				},
+				{
+					"name": "gl_VertexID",
+					"type": "int"
+				},
+				{
+					"name": "gl_InstanceID",
+					"type": "int"
+				}
+			],
+			"outputs": [
+				{
+					"name": "wposition",
+					"type": "vec3"
+				},
+				{
+					"name": "wnormal",
+					"type": "vec3"
+				},
+				{
+					"name": "eyeDir",
+					"type": "vec3"
+				}
+			],
+			"uniforms": [
+				{
+					"name": "W",
+					"type": "mat4"
+				},
+				{
+					"name": "N",
+					"type": "mat3"
+				},
+				{
+					"name": "WVP",
+					"type": "mat4"
+				},
+				{
+					"name": "eye",
+					"type": "vec3"
+				}
+			],
+			"types": [
+				{
+					"name": "gl_PerVertex",
+					"members": [
+						{
+							"type": "vec4",
+							"name": "gl_Position"
+						},
+						{
+							"type": "float",
+							"name": "gl_PointSize"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_ClipDistance"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_CullDistance"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "hoverHexGreen_mesh_frag",
+			"files": [
+				"hoverHexGreen_mesh.frag.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "wnormal",
+					"type": "vec3"
+				}
+			],
+			"outputs": [
+				{
+					"name": "fragColor",
+					"type": "vec4[]"
+				}
+			],
+			"uniforms": [],
+			"types": []
+		},
+		{
+			"name": "hoverHexGreen_shadowmap_vert",
+			"files": [
+				"hoverHexGreen_shadowmap.vert.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "pos",
+					"type": "vec4"
+				},
+				{
+					"name": "gl_VertexID",
+					"type": "int"
+				},
+				{
+					"name": "gl_InstanceID",
+					"type": "int"
+				}
+			],
+			"outputs": [],
+			"uniforms": [
+				{
+					"name": "LWVP",
+					"type": "mat4"
+				}
+			],
+			"types": [
+				{
+					"name": "gl_PerVertex",
+					"members": [
+						{
+							"type": "vec4",
+							"name": "gl_Position"
+						},
+						{
+							"type": "float",
+							"name": "gl_PointSize"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_ClipDistance"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_CullDistance"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "hoverHexGreen_translucent_frag",
+			"files": [
+				"hoverHexGreen_translucent.frag.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "wnormal",
+					"type": "vec3"
+				},
+				{
+					"name": "eyeDir",
+					"type": "vec3"
+				},
+				{
+					"name": "wposition",
+					"type": "vec3"
+				},
+				{
+					"name": "gl_FragCoord",
+					"type": "vec4"
+				}
+			],
+			"outputs": [
+				{
+					"name": "fragColor",
+					"type": "vec4[]"
+				}
+			],
+			"uniforms": [
+				{
+					"name": "casData",
+					"type": "vec4[]"
+				},
+				{
+					"name": "shirr",
+					"type": "vec4[]"
+				},
+				{
+					"name": "backgroundCol",
+					"type": "vec3"
+				},
+				{
+					"name": "envmapStrength",
+					"type": "float"
+				},
+				{
+					"name": "sunDir",
+					"type": "vec3"
+				},
+				{
+					"name": "receiveShadow",
+					"type": "bool"
+				},
+				{
+					"name": "shadowMap",
+					"type": "sampler2DShadow"
+				},
+				{
+					"name": "eye",
+					"type": "vec3"
+				},
+				{
+					"name": "shadowsBias",
+					"type": "float"
+				},
+				{
+					"name": "sunCol",
+					"type": "vec3"
+				}
+			],
+			"types": []
+		},
+		{
+			"name": "hoverHexGreen_translucent_vert",
+			"files": [
+				"hoverHexGreen_translucent.vert.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "pos",
+					"type": "vec4"
+				},
+				{
+					"name": "nor",
+					"type": "vec2"
+				},
+				{
+					"name": "gl_VertexID",
+					"type": "int"
+				},
+				{
+					"name": "gl_InstanceID",
+					"type": "int"
+				}
+			],
+			"outputs": [
+				{
+					"name": "wposition",
+					"type": "vec3"
+				},
+				{
+					"name": "wnormal",
+					"type": "vec3"
+				},
+				{
+					"name": "eyeDir",
+					"type": "vec3"
+				}
+			],
+			"uniforms": [
+				{
+					"name": "W",
+					"type": "mat4"
+				},
+				{
+					"name": "N",
+					"type": "mat3"
+				},
+				{
+					"name": "WVP",
+					"type": "mat4"
+				},
+				{
+					"name": "eye",
+					"type": "vec3"
+				}
+			],
+			"types": [
+				{
+					"name": "gl_PerVertex",
+					"members": [
+						{
+							"type": "vec4",
+							"name": "gl_Position"
+						},
+						{
+							"type": "float",
+							"name": "gl_PointSize"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_ClipDistance"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_CullDistance"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "hoverHex_mesh_frag",
+			"files": [
+				"hoverHex_mesh.frag.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "wnormal",
+					"type": "vec3"
+				}
+			],
+			"outputs": [
+				{
+					"name": "fragColor",
+					"type": "vec4[]"
+				}
+			],
+			"uniforms": [],
+			"types": []
+		},
+		{
+			"name": "hoverHex_mesh_vert",
+			"files": [
+				"hoverHex_mesh.vert.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "pos",
+					"type": "vec4"
+				},
+				{
+					"name": "nor",
+					"type": "vec2"
+				},
+				{
+					"name": "gl_VertexID",
+					"type": "int"
+				},
+				{
+					"name": "gl_InstanceID",
+					"type": "int"
+				}
+			],
+			"outputs": [
+				{
+					"name": "wnormal",
+					"type": "vec3"
+				}
+			],
+			"uniforms": [
+				{
+					"name": "N",
+					"type": "mat3"
+				},
+				{
+					"name": "WVP",
+					"type": "mat4"
+				}
+			],
+			"types": [
+				{
+					"name": "gl_PerVertex",
+					"members": [
+						{
+							"type": "vec4",
+							"name": "gl_Position"
+						},
+						{
+							"type": "float",
+							"name": "gl_PointSize"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_ClipDistance"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_CullDistance"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "hoverHex_shadowmap_frag",
+			"files": [
+				"hoverHex_shadowmap.frag.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [],
+			"outputs": [],
+			"uniforms": [],
+			"types": []
+		},
+		{
+			"name": "hoverHex_shadowmap_vert",
+			"files": [
+				"hoverHex_shadowmap.vert.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "pos",
+					"type": "vec4"
+				},
+				{
+					"name": "gl_VertexID",
+					"type": "int"
+				},
+				{
+					"name": "gl_InstanceID",
+					"type": "int"
+				}
+			],
+			"outputs": [],
+			"uniforms": [
+				{
+					"name": "LWVP",
+					"type": "mat4"
+				}
+			],
+			"types": [
+				{
+					"name": "gl_PerVertex",
+					"members": [
+						{
+							"type": "vec4",
+							"name": "gl_Position"
+						},
+						{
+							"type": "float",
+							"name": "gl_PointSize"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_ClipDistance"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_CullDistance"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "hoverHex_translucent_frag",
+			"files": [
+				"hoverHex_translucent.frag.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "wnormal",
+					"type": "vec3"
+				},
+				{
+					"name": "eyeDir",
+					"type": "vec3"
+				},
+				{
+					"name": "wposition",
+					"type": "vec3"
+				},
+				{
+					"name": "gl_FragCoord",
+					"type": "vec4"
+				}
+			],
+			"outputs": [
+				{
+					"name": "fragColor",
+					"type": "vec4[]"
+				}
+			],
+			"uniforms": [
+				{
+					"name": "casData",
+					"type": "vec4[]"
+				},
+				{
+					"name": "shirr",
+					"type": "vec4[]"
+				},
+				{
+					"name": "backgroundCol",
+					"type": "vec3"
+				},
+				{
+					"name": "envmapStrength",
+					"type": "float"
+				},
+				{
+					"name": "sunDir",
+					"type": "vec3"
+				},
+				{
+					"name": "receiveShadow",
+					"type": "bool"
+				},
+				{
+					"name": "shadowMap",
+					"type": "sampler2DShadow"
+				},
+				{
+					"name": "eye",
+					"type": "vec3"
+				},
+				{
+					"name": "shadowsBias",
+					"type": "float"
+				},
+				{
+					"name": "sunCol",
+					"type": "vec3"
+				}
+			],
+			"types": []
+		},
+		{
+			"name": "hoverHex_translucent_vert",
+			"files": [
+				"hoverHex_translucent.vert.d3d11"
+			],
+			"file_sizes": [
+				1
+			],
+			"type": "shader",
+			"inputs": [
+				{
+					"name": "pos",
+					"type": "vec4"
+				},
+				{
+					"name": "nor",
+					"type": "vec2"
+				},
+				{
+					"name": "gl_VertexID",
+					"type": "int"
+				},
+				{
+					"name": "gl_InstanceID",
+					"type": "int"
+				}
+			],
+			"outputs": [
+				{
+					"name": "wposition",
+					"type": "vec3"
+				},
+				{
+					"name": "wnormal",
+					"type": "vec3"
+				},
+				{
+					"name": "eyeDir",
+					"type": "vec3"
+				}
+			],
+			"uniforms": [
+				{
+					"name": "W",
+					"type": "mat4"
+				},
+				{
+					"name": "N",
+					"type": "mat3"
+				},
+				{
+					"name": "WVP",
+					"type": "mat4"
+				},
+				{
+					"name": "eye",
+					"type": "vec3"
+				}
+			],
+			"types": [
+				{
+					"name": "gl_PerVertex",
+					"members": [
+						{
+							"type": "vec4",
+							"name": "gl_Position"
+						},
+						{
+							"type": "float",
+							"name": "gl_PointSize"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_ClipDistance"
+						},
+						{
+							"type": "float[]",
+							"name": "gl_CullDistance"
+						}
+					]
+				}
+			]
 		},
 		{
 			"name": "line_deferred_frag",
