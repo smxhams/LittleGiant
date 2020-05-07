@@ -444,11 +444,11 @@ var arm_GenerateGame = function() {
 					if(q + r + s == 0) {
 						if(q == 0 && r == 0 && s == 0) {
 							arm_InitGame.inst.homeIndex = index;
-							temp = [{ i : index, x : q, y : r, z : s, t : -1, v : 1000, p : 1000}];
+							temp = [{ i : index, x : q, y : r, z : s, t : -1, v : 1000, p : 1000, o : null, n : null}];
 							data.push(temp);
 						} else {
 							distance = (Math.abs(q) + Math.abs(r) + Math.abs(s)) / 2 | 0;
-							temp = [{ i : index, x : q, y : r, z : s, t : Std.random(20), v : Math.pow(distance,3) * 1750 * (Math.random() + 0.5) | 0, p : 0}];
+							temp = [{ i : index, x : q, y : r, z : s, t : Std.random(20), v : 1750 * (Math.random() + 0.5) | 0, p : 0, o : null, n : null}];
 							data.push(temp);
 						}
 						++index;
@@ -517,9 +517,9 @@ var arm_GenerateGame = function() {
 						} else {
 							_this2.h["id"] = value2;
 						}
+						data1[tickOffset1[0]][0].o = o1;
 					};
 				})(tickOffset));
-				haxe_Log.trace(tickOffset[0],{ fileName : "arm/GenerateGame.hx", lineNumber : 106, className : "arm.GenerateGame", methodName : "new"});
 			}
 			_gthis.currentTick += 1;
 		}
@@ -529,6 +529,7 @@ var arm_GenerateGame = function() {
 		}
 	});
 	this.notifyOnRemove(function() {
+		_gthis.calcNeighbors();
 		iron_Scene.active.spawnObject("contGame",null,function(o2) {
 		});
 	});
@@ -543,6 +544,31 @@ arm_GenerateGame.prototype = $extend(iron_Trait.prototype,{
 	,currentTick: null
 	,currentTime: null
 	,tickInterval: null
+	,calcNeighbors: function() {
+		var directions = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+		var data = arm_InitGame.inst.hexTilesData;
+		var _g = 0;
+		while(_g < data.length) {
+			var d = data[_g];
+			++_g;
+			var nTemp = [];
+			var _g1 = 0;
+			while(_g1 < data.length) {
+				var n = data[_g1];
+				++_g1;
+				var _g2 = 0;
+				while(_g2 < directions.length) {
+					var b = directions[_g2];
+					++_g2;
+					if(d[0].x == n[0].x + b[0] && d[0].y == n[0].y + b[1]) {
+						nTemp.push(n[0].i);
+					}
+				}
+			}
+			d[0].n = nTemp;
+			haxe_Log.trace(d[0].n,{ fileName : "arm/GenerateGame.hx", lineNumber : 135, className : "arm.GenerateGame", methodName : "calcNeighbors"});
+		}
+	}
 	,__class__: arm_GenerateGame
 });
 var arm_InitGame = function() {
@@ -642,13 +668,15 @@ arm_InitGame.prototype = $extend(iron_Trait.prototype,{
 	,__class__: arm_InitGame
 });
 var arm_MainGame = function() {
+	this.v = new iron_math_Vec4();
 	this.camSpeed = 0.5;
 	var _gthis = this;
 	iron_Trait.call(this);
 	this.notifyOnInit(function() {
-		haxe_Log.trace("Welcome to the main game",{ fileName : "arm/MainGame.hx", lineNumber : 21, className : "arm.MainGame", methodName : "new"});
+		haxe_Log.trace("Welcome to the main game",{ fileName : "arm/MainGame.hx", lineNumber : 27, className : "arm.MainGame", methodName : "new"});
 		_gthis.keyboard = iron_system_Input.getKeyboard();
 		_gthis.mouse = iron_system_Input.getMouse();
+		_gthis.canvas = iron_Scene.active.getTrait(armory_trait_internal_CanvasScript);
 		var camera = iron_Scene.active.getChild("Camera");
 		_gthis.camX = camera.transform.loc.x + 0.245;
 		_gthis.camY = camera.transform.loc.y + 0.245;
@@ -669,10 +697,12 @@ arm_MainGame.__super__ = iron_Trait;
 arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 	keyboard: null
 	,mouse: null
+	,canvas: null
 	,lastHover: null
 	,camSpeed: null
 	,camX: null
 	,camY: null
+	,v: null
 	,camControl: function() {
 		var camera = iron_Scene.active.getChild("Camera");
 		if(this.keyboard.down("right")) {
@@ -732,12 +762,43 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 				if(hoverHex.getChild("hoverHexBlue") != null) {
 					hoverHex.getChild("hoverHexBlue").visible = true;
 				}
+				var hexValues = this.canvas.getElement("contHexValues");
+				var cam = iron_Scene.active.camera;
+				var _this3 = this.v;
+				var v = hoverHex.transform.loc;
+				_this3.x = v.x;
+				_this3.y = v.y;
+				_this3.z = v.z;
+				_this3.w = v.w;
+				var _this4 = this.v;
+				var m = cam.V;
+				var x = _this4.x;
+				var y = _this4.y;
+				var z = _this4.z;
+				var d = 1.0 / (m.self._03 * x + m.self._13 * y + m.self._23 * z + m.self._33);
+				_this4.x = (m.self._00 * x + m.self._10 * y + m.self._20 * z + m.self._30) * d;
+				_this4.y = (m.self._01 * x + m.self._11 * y + m.self._21 * z + m.self._31) * d;
+				_this4.z = (m.self._02 * x + m.self._12 * y + m.self._22 * z + m.self._32) * d;
+				var _this5 = this.v;
+				var m1 = cam.P;
+				var x1 = _this5.x;
+				var y1 = _this5.y;
+				var z1 = _this5.z;
+				var d1 = 1.0 / (m1.self._03 * x1 + m1.self._13 * y1 + m1.self._23 * z1 + m1.self._33);
+				_this5.x = (m1.self._00 * x1 + m1.self._10 * y1 + m1.self._20 * z1 + m1.self._30) * d1;
+				_this5.y = (m1.self._01 * x1 + m1.self._11 * y1 + m1.self._21 * z1 + m1.self._31) * d1;
+				_this5.z = (m1.self._02 * x1 + m1.self._12 * y1 + m1.self._22 * z1 + m1.self._32) * d1;
+				hexValues.x = (this.v.x + 1) * kha_System.windowWidth() / 2;
+				hexValues.y = (-this.v.y + 1) * kha_System.windowHeight() / 2;
+				hexValues.visible = true;
+				haxe_Log.trace(arm_InitGame.inst.hexTilesData[this.lastHover][0].n,{ fileName : "arm/MainGame.hx", lineNumber : 126, className : "arm.MainGame", methodName : "mouseOver"});
 			}
 		} else if(this.lastHover != null) {
 			this.lastHover = null;
 			if(hoverHex.getChild("hoverHexBlue") != null) {
 				hoverHex.getChild("hoverHexBlue").visible = false;
 			}
+			this.canvas.getElement("contHexValues").visible = false;
 		}
 	}
 	,roundValue: function(n,prec) {

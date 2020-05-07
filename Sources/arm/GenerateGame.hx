@@ -24,19 +24,19 @@ class GenerateGame extends iron.Trait {
 			var data = InitGame.inst.hexTilesData;
 			var index = 0;
 			var distance = 0;
-			var temp:Array<{i:Int, x:Int, y:Int, z:Int, t:Int, v:Int, p:Int}> = [];
+			var temp:Array<{i:Int, x:Int, y:Int, z:Int, t:Int, v:Int, p:Int, o:Object, n:Array<Int>}> = [];
 			for (q in -radius...radius+1) { //Iterates through all possible hexagon positions
 				for (r in -radius...radius+1) {
 					for (s in -radius...radius+1) {
 						if (q+r+s == 0) { //Filters to only applicable hexagons
 							if (q==0&&r==0&&s==0) {
 								InitGame.inst.homeIndex = index;
-								temp = [{i:index, x:q, y:r, z:s, t:-1, v:1000, p:1000}];
+								temp = [{i:index, x:q, y:r, z:s, t:-1, v:1000, p:1000, o:null, n:null}];
 								data.push(temp);
 							}
 							else {
 								distance = Std.int((Math.abs(q)+Math.abs(r)+Math.abs(s)) / 2);
-								temp = [{i:index, x:q, y:r, z:s, t:Std.random(20), v:Std.int(1750*(Math.random()+0.5)), p:0}];
+								temp = [{i:index, x:q, y:r, z:s, t:Std.random(20), v:Std.int(1750*(Math.random()+0.5)), p:0, o:null, n:null}];
 								data.push(temp);
 							}
 							index += 1;
@@ -102,8 +102,8 @@ class GenerateGame extends iron.Trait {
 						o.transform.buildMatrix();
 						InitGame.inst.hexTileCelestials.add(o);
 						o.properties['id'] = data[tickOffset][0].i;
+						data[tickOffset][0].o = o;
 					});
-					trace(tickOffset);
 				}
 				currentTick += 1;
 			}
@@ -113,7 +113,26 @@ class GenerateGame extends iron.Trait {
 		});
 
 		notifyOnRemove(function() {
+			calcNeighbors();
 			iron.Scene.active.spawnObject('contGame', null, function(o:Object) {});
 		});
+	}
+
+	function calcNeighbors() {
+		var directions:Array<Array<Int>> = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+		var data = InitGame.inst.hexTilesData;
+		for (d in data) {
+			var nTemp:Array<Int> = [];
+			for (n in data) {
+				for (b in directions) {
+					if (d[0].x == (n[0].x + b[0]) && d[0].y == (n[0].y + b[1])) {
+						nTemp.push(n[0].i);
+					}
+
+				}
+			}
+			d[0].n = nTemp;
+			trace(d[0].n);
+		}
 	}
 }
