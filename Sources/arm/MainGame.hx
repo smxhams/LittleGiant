@@ -43,6 +43,7 @@ class MainGame extends iron.Trait {
 		notifyOnUpdate(function() {
 			camControl();
 			mouseOver();
+			if (canvas.getElement('contHexValues').visible == true) hexValuePos();
 			
 
 		});
@@ -115,15 +116,17 @@ class MainGame extends iron.Trait {
 				if (hoverHex.getChild('hoverHexBlue') != null) hoverHex.getChild('hoverHexBlue').visible = true;
 				
 				//Display values with UI
-				var hexValues = canvas.getElement('contHexValues');
+				var hexValues = canvas.getElement('hexValue1');
 				var cam = Scene.active.camera;
+				var data = InitGame.inst.hexTilesData;
 				v.setFrom(hoverHex.transform.loc);
 				v.applyproj(cam.V);
 				v.applyproj(cam.P);
 				hexValues.x = (v.x + 1) * App.w()/2;
 				hexValues.y = ((-v.y + 1) * App.h()/2);
 				hexValues.visible = true;
-				trace(InitGame.inst.hexTilesData[lastHover][0].n);
+				canvas.getElement('contHexValues').visible = true;
+				//trace(data[lastHover][0].n);
 			}
 		}
 		else {
@@ -138,5 +141,46 @@ class MainGame extends iron.Trait {
 	function roundValue(n:Float, prec:Int) {
 		n = Math.round(n * Math.pow(10, prec));
 		return n;
+	}
+
+	function hexValuePos() {
+		var data = InitGame.inst.hexTilesData;
+		var nNum = Std.int(data[lastHover][0].n.length+2);
+		var cam = Scene.active.camera;
+		for (i in 1...nNum) {
+			if (i == 1) {
+				if (canvas.getElement("hexValue1").text != Std.string(data[lastHover][0].v)) {
+					canvas.getElement("hexValue1").text = Std.string(data[lastHover][0].v);
+				}
+				v.setFrom(data[lastHover][0].o.transform.loc);
+				v.applyproj(cam.V);
+				v.applyproj(cam.P);
+				canvas.getElement("hexValue1").x = (v.x + 1) * App.w()/2;
+				canvas.getElement("hexValue1").y = ((-v.y + 1) * App.h()/2);
+
+			}
+			else {
+				if (canvas.getElement("hexValue" + i).text != Std.string(data[data[lastHover][0].n[i-2]][0].v)) {
+					canvas.getElement("hexValue" + i).text = Std.string(data[data[lastHover][0].n[i-2]][0].v);
+					canvas.getElement("hexValue" + i).visible = true;
+				}
+
+				v.setFrom(data[data[lastHover][0].n[i-2]][0].o.transform.loc);
+				v.applyproj(cam.V);
+				v.applyproj(cam.P);
+				canvas.getElement("hexValue" + i).x = (v.x + 1) * App.w()/2;
+				canvas.getElement("hexValue" + i).y = ((-v.y + 1) * App.h()/2);
+			}
+
+		}
+		if (nNum == 5) {
+			canvas.getElement("hexValue5").visible = false;
+			canvas.getElement("hexValue6").visible = false;
+			canvas.getElement("hexValue7").visible = false;
+		}
+		else if (nNum == 6) {
+			canvas.getElement("hexValue6").visible = false;
+			canvas.getElement("hexValue7").visible = false;
+		}
 	}
 }

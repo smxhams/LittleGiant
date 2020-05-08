@@ -1,0 +1,1 @@
+¬shader_datas‘‚¤name¬HexGold_data¨contexts‘‰¤name¤mesh«depth_writeÃ¬compare_mode¤less©cull_mode©clockwise¯vertex_elements’‚¤name£pos¤dataªshort4norm‚¤name£nor¤dataªshort2norm­texture_units©constants’ƒ¤name¡N¤type¤mat3¤link­_normalMatrixƒ¤name£WVP¤type¤mat4¤linkº_worldViewProjectionMatrix­vertex_shader±HexGold_mesh.vert¯fragment_shader±HexGold_mesh.frag
