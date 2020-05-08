@@ -24,13 +24,13 @@ class GenerateGame extends iron.Trait {
 			var data = InitGame.inst.hexTilesData;
 			var index = 0;
 			var distance = 0;
-			var temp:Array<{i:Int, x:Int, y:Int, z:Int, t:Int, v:Int, p:Int, o:Object, n:Array<Int>}> = [];
+			var temp:Array<{i:Int, x:Int, y:Int, z:Int, t:Int, v:Float, p:Int, o:Object, n:Array<Int>, out:Int, outO:Object, ringO:Object}> = [];
 			for (q in -radius...radius+1) { //Iterates through all possible hexagon positions
 				for (r in -radius...radius+1) {
 					for (s in -radius...radius+1) {
 						if (q+r+s == 0) { //Filters to only applicable hexagons
 							distance = Std.int((Math.abs(q)+Math.abs(r)+Math.abs(s)) / 2);
-							temp = [{i:index, x:q, y:r, z:s, t:Std.random(20), v:Std.int(1750*(Math.random()+0.5)), p:0, o:null, n:null}];
+							temp = [{i:index, x:q, y:r, z:s, t:Std.random(20), v:Std.int(1750*(Math.random()+0.5)), p:0, o:null, n:null, out:null, outO:null, ringO:null}];
 							data.push(temp);
 							index += 1;
 						}

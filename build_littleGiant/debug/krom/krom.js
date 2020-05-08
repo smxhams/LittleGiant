@@ -443,7 +443,7 @@ var arm_GenerateGame = function() {
 					var s = _g3++;
 					if(q + r + s == 0) {
 						distance = (Math.abs(q) + Math.abs(r) + Math.abs(s)) / 2 | 0;
-						temp = [{ i : index, x : q, y : r, z : s, t : Std.random(20), v : 1750 * (Math.random() + 0.5) | 0, p : 0, o : null, n : null}];
+						temp = [{ i : index, x : q, y : r, z : s, t : Std.random(20), v : 1750 * (Math.random() + 0.5) | 0, p : 0, o : null, n : null, out : null, outO : null, ringO : null}];
 						data.push(temp);
 						++index;
 					}
@@ -693,7 +693,7 @@ var arm_MainGame = function() {
 	var _gthis = this;
 	iron_Trait.call(this);
 	this.notifyOnInit(function() {
-		haxe_Log.trace("Welcome to the main game",{ fileName : "arm/MainGame.hx", lineNumber : 35, className : "arm.MainGame", methodName : "new"});
+		haxe_Log.trace("Welcome to the main game",{ fileName : "arm/MainGame.hx", lineNumber : 36, className : "arm.MainGame", methodName : "new"});
 		_gthis.keyboard = iron_system_Input.getKeyboard();
 		_gthis.mouse = iron_system_Input.getMouse();
 		_gthis.canvas = iron_Scene.active.getTrait(armory_trait_internal_CanvasScript);
@@ -709,10 +709,11 @@ var arm_MainGame = function() {
 	this.notifyOnUpdate(function() {
 		_gthis.camControl();
 		_gthis.mouseOver();
+		_gthis.massCalc();
 		if(_gthis.canvas.getElement("contHexValues").visible == true) {
 			_gthis.hexValuePos();
 		}
-		if(_gthis.mouse.started("left")) {
+		if(_gthis.mouse.started("left") && _gthis.lastHover != null) {
 			_gthis.clickStart = _gthis.lastHover;
 			iron_Scene.active.spawnObject("contArrow",null,function(o1) {
 				o1.transform.loc.x = _gthis.data[_gthis.clickStart][0].o.transform.loc.x;
@@ -721,10 +722,13 @@ var arm_MainGame = function() {
 				o1.transform.buildMatrix();
 				_gthis.tempObj = o1;
 			});
-		} else if(_gthis.mouse.down("left")) {
+		} else if(_gthis.mouse.down("left") && _gthis.lastHover != null) {
 			if(_gthis.data[_gthis.clickStart][0].n.indexOf(_gthis.lastHover) != -1 && _gthis.lastHover != null) {
 				if(_gthis.tempObj.children[0] != null) {
 					_gthis.tempObj.children[0].visible = true;
+				}
+				if(_gthis.data[_gthis.clickStart][0].outO != null) {
+					_gthis.data[_gthis.clickStart][0].outO.children[0].visible = false;
 				}
 				var _this = _gthis.v1;
 				_this.x = -1;
@@ -841,10 +845,22 @@ var arm_MainGame = function() {
 				_gthis.tempObj.transform.buildMatrix();
 			} else if(_gthis.tempObj.children[0] != null) {
 				_gthis.tempObj.children[0].visible = false;
+				if(_gthis.data[_gthis.clickStart][0].outO != null) {
+					_gthis.data[_gthis.clickStart][0].outO.children[0].visible = true;
+				}
 			}
-		} else if(_gthis.mouse.released("left")) {
-			_gthis.tempObj = null;
+		} else if(_gthis.mouse.released("left") && _gthis.lastHover != null) {
+			if(_gthis.data[_gthis.clickStart][0].n.indexOf(_gthis.lastHover) != -1 && _gthis.lastHover != null) {
+				_gthis.data[_gthis.clickStart][0].out = _gthis.lastHover;
+				if(_gthis.data[_gthis.clickStart][0].outO != null) {
+					_gthis.data[_gthis.clickStart][0].outO.remove();
+				}
+				_gthis.data[_gthis.clickStart][0].outO = _gthis.tempObj;
+			} else if(_gthis.tempObj.children[0] != null) {
+				_gthis.tempObj.children[0].visible = false;
+			}
 			_gthis.clickStart = null;
+			_gthis.tempObj = null;
 		}
 	});
 };
@@ -869,20 +885,44 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 	,camControl: function() {
 		var camera = iron_Scene.active.getChild("Camera");
 		if(this.keyboard.down("right") || this.mouse.x >= kha_System.windowWidth() - kha_System.windowWidth() / 20) {
-			this.camX += this.camSpeed;
+			if(this.camX < 30) {
+				this.camX += this.camSpeed;
+			}
 		}
 		if(this.keyboard.down("left") || this.mouse.x <= kha_System.windowWidth() / 20) {
-			this.camX -= this.camSpeed;
+			if(this.camX > -30) {
+				this.camX -= this.camSpeed;
+			}
 		}
 		if(this.keyboard.down("up") || this.mouse.y <= kha_System.windowHeight() / 15) {
-			this.camY += this.camSpeed;
+			if(this.camY < 30) {
+				this.camY += this.camSpeed;
+			}
 		}
 		if(this.keyboard.down("down") || this.mouse.y >= kha_System.windowHeight() - kha_System.windowHeight() / 15) {
-			this.camY -= this.camSpeed;
+			if(this.camY > -80) {
+				this.camY -= this.camSpeed;
+			}
 		}
 		if(this.mouse.down("middle")) {
-			this.camX -= this.mouse.movementX / 10 * (arm_InitGame.inst.camDistance / 100);
-			this.camY -= -this.mouse.movementY / 10 * (arm_InitGame.inst.camDistance / 100);
+			if(this.camX > -30 && this.camX < 30) {
+				this.camX -= this.mouse.movementX / 10 * (arm_InitGame.inst.camDistance / 100);
+			}
+			if(this.camY > -80 && this.camY < 30) {
+				this.camY -= -this.mouse.movementY / 10 * (arm_InitGame.inst.camDistance / 100);
+			}
+		}
+		if(this.camX < -30) {
+			this.camX = -29.9;
+		}
+		if(this.camX > 30) {
+			this.camX = 29.9;
+		}
+		if(this.camY < -80) {
+			this.camY = -79.9;
+		}
+		if(this.camY > 30) {
+			this.camY = -29.9;
 		}
 		if(arm_InitGame.inst.camDistance < 80.0) {
 			if(this.mouse.wheelDelta == 1) {
@@ -983,8 +1023,8 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 			var i = _g++;
 			if(i == 1) {
 				if(this.canvas.getElement("hexValue1").text != Std.string(data[this.lastHover][0].v)) {
-					var data1 = data[this.lastHover];
-					this.canvas.getElement("hexValue1").text = Std.string(data1[0].v);
+					var tmp = data[this.lastHover][0].v | 0;
+					this.canvas.getElement("hexValue1").text = Std.string(tmp);
 				}
 				var _this = this.v;
 				var v = data[this.lastHover][0].o.transform.loc;
@@ -1010,14 +1050,14 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 				_this2.x = (m1.self._00 * x1 + m1.self._10 * y1 + m1.self._20 * z1 + m1.self._30) * d1;
 				_this2.y = (m1.self._01 * x1 + m1.self._11 * y1 + m1.self._21 * z1 + m1.self._31) * d1;
 				_this2.z = (m1.self._02 * x1 + m1.self._12 * y1 + m1.self._22 * z1 + m1.self._32) * d1;
-				var tmp = (this.v.x + 1) * kha_System.windowWidth();
-				this.canvas.getElement("hexValue1").x = tmp / 2;
-				var tmp1 = (-this.v.y + 1) * kha_System.windowHeight();
-				this.canvas.getElement("hexValue1").y = tmp1 / 2;
+				var tmp1 = (this.v.x + 1) * kha_System.windowWidth();
+				this.canvas.getElement("hexValue1").x = tmp1 / 2;
+				var tmp2 = (-this.v.y + 1) * kha_System.windowHeight();
+				this.canvas.getElement("hexValue1").y = tmp2 / 2;
 			} else {
 				if(this.canvas.getElement("hexValue" + i).text != Std.string(data[data[this.lastHover][0].n[i - 2]][0].v)) {
-					var data2 = data[data[this.lastHover][0].n[i - 2]];
-					this.canvas.getElement("hexValue" + i).text = Std.string(data2[0].v);
+					var tmp3 = data[data[this.lastHover][0].n[i - 2]][0].v | 0;
+					this.canvas.getElement("hexValue" + i).text = Std.string(tmp3);
 					this.canvas.getElement("hexValue" + i).visible = true;
 				}
 				var _this3 = this.v;
@@ -1044,12 +1084,12 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 				_this5.x = (m3.self._00 * x3 + m3.self._10 * y3 + m3.self._20 * z3 + m3.self._30) * d3;
 				_this5.y = (m3.self._01 * x3 + m3.self._11 * y3 + m3.self._21 * z3 + m3.self._31) * d3;
 				_this5.z = (m3.self._02 * x3 + m3.self._12 * y3 + m3.self._22 * z3 + m3.self._32) * d3;
-				var tmp2 = this.canvas;
-				var tmp3 = (this.v.x + 1) * kha_System.windowWidth();
-				tmp2.getElement("hexValue" + i).x = tmp3 / 2;
 				var tmp4 = this.canvas;
-				var tmp5 = (-this.v.y + 1) * kha_System.windowHeight();
-				tmp4.getElement("hexValue" + i).y = tmp5 / 2;
+				var tmp5 = (this.v.x + 1) * kha_System.windowWidth();
+				tmp4.getElement("hexValue" + i).x = tmp5 / 2;
+				var tmp6 = this.canvas;
+				var tmp7 = (-this.v.y + 1) * kha_System.windowHeight();
+				tmp6.getElement("hexValue" + i).y = tmp7 / 2;
 			}
 		}
 		if(nNum == 5) {
@@ -1059,6 +1099,17 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 		} else if(nNum == 6) {
 			this.canvas.getElement("hexValue6").visible = false;
 			this.canvas.getElement("hexValue7").visible = false;
+		}
+	}
+	,massCalc: function() {
+		var _g = 0;
+		var _g1 = this.data;
+		while(_g < _g1.length) {
+			var i = _g1[_g];
+			++_g;
+			if(i[0].out != null) {
+				this.data[i[0].out][0].v += i[0].v * arm_InitGame.inst.massExchangeRate * (0.016666666666666666 * iron_system_Time.scale);
+			}
 		}
 	}
 	,__class__: arm_MainGame

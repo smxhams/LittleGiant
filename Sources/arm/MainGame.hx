@@ -8,6 +8,7 @@ import armory.trait.physics.PhysicsWorld;
 import iron.object.Object;
 import armory.trait.internal.CanvasScript;
 import iron.App;
+import iron.system.Time;
 
 class MainGame extends iron.Trait {
 	var keyboard:Keyboard;
@@ -51,8 +52,11 @@ class MainGame extends iron.Trait {
 		notifyOnUpdate(function() {
 			camControl();
 			mouseOver();
+			massCalc();
 			if (canvas.getElement('contHexValues').visible == true) hexValuePos();
-			if (mouse.started('left')) {
+
+			// Clicking and dragging to direct flow
+			if (mouse.started('left') && lastHover != null) {
 				clickStart = lastHover;
 				iron.Scene.active.spawnObject('contArrow', null, function(o:Object) {
 					o.transform.loc.x = data[clickStart][0].o.transform.loc.x;
@@ -63,23 +67,31 @@ class MainGame extends iron.Trait {
 				});
 				
 			}
-			else if (mouse.down('left')) {
+			else if (mouse.down('left') && lastHover != null) {
 				if (data[clickStart][0].n.indexOf(lastHover) != -1 && lastHover != null) {
 					if (tempObj.children[0]!=null) tempObj.children[0].visible = true;
-					
+					if (data[clickStart][0].outO != null) data[clickStart][0].outO.children[0].visible = false;
 					v1.set(-1,0,0);
 					v2.setFrom(data[lastHover][0].o.transform.loc).sub(tempObj.transform.loc).normalize();
 					q.fromTo(v1,v2);
 					tempObj.transform.rot = q;
 					tempObj.transform.buildMatrix();
 				}
-				else if (tempObj.children[0]!=null) tempObj.children[0].visible = false;
+				else if (tempObj.children[0]!=null) {
+					tempObj.children[0].visible = false;
+					if (data[clickStart][0].outO != null) data[clickStart][0].outO.children[0].visible = true;
+				}
 				//trace(mouse.x + " x " + mouse.y);
 			}
-			else if (mouse.released('left')) {
-				//tempObj.remove();
-				tempObj = null;
+			else if (mouse.released('left') && lastHover != null) {
+				if (data[clickStart][0].n.indexOf(lastHover) != -1 && lastHover != null) {
+					data[clickStart][0].out = lastHover;
+					if (data[clickStart][0].outO != null) data[clickStart][0].outO.remove();
+					data[clickStart][0].outO = tempObj;
+				}
+				else if (tempObj.children[0]!=null) tempObj.children[0].visible = false;
 				clickStart = null;
+				tempObj = null;
 			}
 
 		});
@@ -93,22 +105,25 @@ class MainGame extends iron.Trait {
 		//Cam control
 		//Arrow keys move
 		if (keyboard.down("right") || mouse.x >= App.w() - App.w()/20) {
-			camX += camSpeed;
+			if (camX < 30) camX += camSpeed;
 		}
 		if (keyboard.down("left") || mouse.x <= App.w()/20) {
-			camX -= camSpeed;
+			if (camX > -30) camX -= camSpeed;
 		}
 		if (keyboard.down("up") || mouse.y <= App.h()/15) {
-			camY += camSpeed;
+			if (camY < 30) camY += camSpeed;
 		}
 		if (keyboard.down("down") || mouse.y >= App.h() - App.h()/15) {
-			camY -= camSpeed;
+			if (camY > -80) camY -= camSpeed;
 		}
 		if (mouse.down('middle')) {
-			camX -= mouse.movementX/10*(InitGame.inst.camDistance/100);
-			camY -= -mouse.movementY/10*(InitGame.inst.camDistance/100);
+			if (camX > -30 && camX < 30) camX -= mouse.movementX/10*(InitGame.inst.camDistance/100);
+			if (camY > -80 && camY < 30) camY -= -mouse.movementY/10*(InitGame.inst.camDistance/100);
 		}
-
+		if (camX < -30) camX = -29.9;
+		if (camX > 30) camX = 29.9;
+		if (camY < -80) camY = -79.9;
+		if (camY > 30) camY = -29.9;
 		//Scroll wheel zoom
 		if (InitGame.inst.camDistance < 80.0) {
 			if (mouse.wheelDelta == 1) {
@@ -190,7 +205,7 @@ class MainGame extends iron.Trait {
 		for (i in 1...nNum) {
 			if (i == 1) {
 				if (canvas.getElement("hexValue1").text != Std.string(data[lastHover][0].v)) {
-					canvas.getElement("hexValue1").text = Std.string(data[lastHover][0].v);
+					canvas.getElement("hexValue1").text = Std.string(Std.int(data[lastHover][0].v));
 				}
 				v.setFrom(data[lastHover][0].o.transform.loc);
 				v.applyproj(cam.V);
@@ -201,7 +216,7 @@ class MainGame extends iron.Trait {
 			}
 			else {
 				if (canvas.getElement("hexValue" + i).text != Std.string(data[data[lastHover][0].n[i-2]][0].v)) {
-					canvas.getElement("hexValue" + i).text = Std.string(data[data[lastHover][0].n[i-2]][0].v);
+					canvas.getElement("hexValue" + i).text = Std.string(Std.int(data[data[lastHover][0].n[i-2]][0].v));
 					canvas.getElement("hexValue" + i).visible = true;
 				}
 
@@ -221,6 +236,13 @@ class MainGame extends iron.Trait {
 		else if (nNum == 6) {
 			canvas.getElement("hexValue6").visible = false;
 			canvas.getElement("hexValue7").visible = false;
+		}
+	}
+	function massCalc() {
+		for (i in data) {
+			if (i[0].out != null) {
+				data[i[0].out][0].v += ((i[0].v)*InitGame.inst.massExchangeRate)*Time.delta;
+			}
 		}
 	}
 }
