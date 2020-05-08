@@ -29,22 +29,18 @@ class GenerateGame extends iron.Trait {
 				for (r in -radius...radius+1) {
 					for (s in -radius...radius+1) {
 						if (q+r+s == 0) { //Filters to only applicable hexagons
-							if (q==0&&r==0&&s==0) {
-								InitGame.inst.homeIndex = index;
-								temp = [{i:index, x:q, y:r, z:s, t:-1, v:1000, p:1000, o:null, n:null}];
-								data.push(temp);
-							}
-							else {
-								distance = Std.int((Math.abs(q)+Math.abs(r)+Math.abs(s)) / 2);
-								temp = [{i:index, x:q, y:r, z:s, t:Std.random(20), v:Std.int(1750*(Math.random()+0.5)), p:0, o:null, n:null}];
-								data.push(temp);
-							}
+							distance = Std.int((Math.abs(q)+Math.abs(r)+Math.abs(s)) / 2);
+							temp = [{i:index, x:q, y:r, z:s, t:Std.random(20), v:Std.int(1750*(Math.random()+0.5)), p:0, o:null, n:null}];
+							data.push(temp);
 							index += 1;
 						}
 					}
 				}
 			}
 			InitGame.inst.totalTiles = index;
+			InitGame.inst.homeIndex = Std.random(index);
+			data[InitGame.inst.homeIndex][0].v = 1000;
+			data[InitGame.inst.homeIndex][0].p = 1000;
 			totalTicks = index*2;
 			tickInterval = (totalTime/totalTicks) * speed;
 			trace("Generating Game. Tick interval: " + tickInterval);
@@ -54,12 +50,16 @@ class GenerateGame extends iron.Trait {
 		});
 
 		notifyOnUpdate(function() {
+			var data = InitGame.inst.hexTilesData;
 			//Camera movement
 			var camera = Scene.active.getChild("Camera");
 			iron.system.Tween.to({
 				target: camera.transform,
 				props: {
-					loc: new Vec4(0.0, -InitGame.inst.camDistance*0.75, InitGame.inst.camDistance),
+					loc: new Vec4((1*(Math.sqrt(3)*data[InitGame.inst.homeIndex][0].x + Math.sqrt(3)/2*data[InitGame.inst.homeIndex][0].y)),
+						1*(3/2*data[InitGame.inst.homeIndex][0].y)-InitGame.inst.camDistance*0.75,
+						InitGame.inst.camDistance
+					),
 					//scale:
 					//rot:
 				},
@@ -69,7 +69,6 @@ class GenerateGame extends iron.Trait {
 			});
 
 
-			var data = InitGame.inst.hexTilesData;
 			while ((currentTick <= totalTicks) && (currentTime > (currentTick*tickInterval))) {
 				// First half place tiles
 				if (currentTick < InitGame.inst.totalTiles) {// Spawning hexagon grid
