@@ -673,6 +673,7 @@ arm_InitGame.prototype = $extend(iron_Trait.prototype,{
 	,currentHover: null
 	,difficulty: null
 	,mapRadius: null
+	,massExchangeRate: null
 	,camDistance: null
 	,music1: null
 	,music2: null
@@ -687,7 +688,7 @@ var arm_MainGame = function() {
 	this.v2 = new iron_math_Vec4();
 	this.v1 = new iron_math_Vec4();
 	this.v = new iron_math_Vec4();
-	this.camSpeed = 0.5;
+	this.camSpeed = 0.3;
 	this.data = arm_InitGame.inst.hexTilesData;
 	var _gthis = this;
 	iron_Trait.call(this);
@@ -867,17 +868,21 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 	,q: null
 	,camControl: function() {
 		var camera = iron_Scene.active.getChild("Camera");
-		if(this.keyboard.down("right")) {
+		if(this.keyboard.down("right") || this.mouse.x >= kha_System.windowWidth() - kha_System.windowWidth() / 20) {
 			this.camX += this.camSpeed;
 		}
-		if(this.keyboard.down("left")) {
+		if(this.keyboard.down("left") || this.mouse.x <= kha_System.windowWidth() / 20) {
 			this.camX -= this.camSpeed;
 		}
-		if(this.keyboard.down("up")) {
+		if(this.keyboard.down("up") || this.mouse.y <= kha_System.windowHeight() / 15) {
 			this.camY += this.camSpeed;
 		}
-		if(this.keyboard.down("down")) {
+		if(this.keyboard.down("down") || this.mouse.y >= kha_System.windowHeight() - kha_System.windowHeight() / 15) {
 			this.camY -= this.camSpeed;
+		}
+		if(this.mouse.down("middle")) {
+			this.camX -= this.mouse.movementX / 10 * (arm_InitGame.inst.camDistance / 100);
+			this.camY -= -this.mouse.movementY / 10 * (arm_InitGame.inst.camDistance / 100);
 		}
 		if(arm_InitGame.inst.camDistance < 80.0) {
 			if(this.mouse.wheelDelta == 1) {
@@ -1127,14 +1132,20 @@ arm_MainMenu.prototype = $extend(iron_Trait.prototype,{
 			this.canvas.getElement("diffRadio").text = "HARD";
 			this.canvas.getElement("diffText1").text = "Mass multiplier x0.75";
 			this.canvas.getElement("diffText2").text = "Map Radius: 6";
+			this.canvas.getElement("diffText3").text = "Mass exchange rate 0.03%";
+			arm_InitGame.inst.massExchangeRate = 0.03;
 		} else if(this.canvas.getElement("diffRadio").text == "EASY") {
 			this.canvas.getElement("diffRadio").text = "STANDARD";
 			this.canvas.getElement("diffText1").text = "Mass multiplier x1.0";
 			this.canvas.getElement("diffText2").text = "Map Radius: 8";
+			this.canvas.getElement("diffText3").text = "Mass exchange rate 0.06%";
+			arm_InitGame.inst.massExchangeRate = 0.06;
 		} else {
 			this.canvas.getElement("diffRadio").text = "EASY";
 			this.canvas.getElement("diffText1").text = "Mass multiplier x1.5";
 			this.canvas.getElement("diffText2").text = "Map Radius: 10";
+			this.canvas.getElement("diffText3").text = "Mass exchange rate 0.08%";
+			arm_InitGame.inst.massExchangeRate = 0.08;
 		}
 	}
 	,__class__: arm_MainMenu

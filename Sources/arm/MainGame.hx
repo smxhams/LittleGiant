@@ -19,7 +19,7 @@ class MainGame extends iron.Trait {
 	var clickStart:Int;
 	var tempObj:Object;
 	//Cam
-	var camSpeed:Float = 0.5;
+	var camSpeed:Float = 0.3;
 	var camX:Float;
 	var camY:Float;
 
@@ -92,17 +92,21 @@ class MainGame extends iron.Trait {
 		var camera = Scene.active.getChild("Camera");
 		//Cam control
 		//Arrow keys move
-		if (keyboard.down("right")) {
+		if (keyboard.down("right") || mouse.x >= App.w() - App.w()/20) {
 			camX += camSpeed;
 		}
-		if (keyboard.down("left")) {
+		if (keyboard.down("left") || mouse.x <= App.w()/20) {
 			camX -= camSpeed;
 		}
-		if (keyboard.down("up")) {
+		if (keyboard.down("up") || mouse.y <= App.h()/15) {
 			camY += camSpeed;
 		}
-		if (keyboard.down("down")) {
+		if (keyboard.down("down") || mouse.y >= App.h() - App.h()/15) {
 			camY -= camSpeed;
+		}
+		if (mouse.down('middle')) {
+			camX -= mouse.movementX/10*(InitGame.inst.camDistance/100);
+			camY -= -mouse.movementY/10*(InitGame.inst.camDistance/100);
 		}
 
 		//Scroll wheel zoom

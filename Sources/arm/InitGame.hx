@@ -15,6 +15,7 @@ class InitGame extends iron.Trait {
 
 	public var difficulty:String;
 	public var mapRadius:Int;
+	public var massExchangeRate:Float;
 
 
 	public var camDistance:Float = 10.0;

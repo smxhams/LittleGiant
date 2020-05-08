@@ -72,16 +72,22 @@ class MainMenu extends iron.Trait {
 			canvas.getElement('diffRadio').text = "HARD";
 			canvas.getElement('diffText1').text = "Mass multiplier x0.75";
 			canvas.getElement('diffText2').text = "Map Radius: 6";
+			canvas.getElement('diffText3').text = "Mass exchange rate 0.03%";
+			InitGame.inst.massExchangeRate = 0.03;
 		}
 		else if (canvas.getElement('diffRadio').text == "EASY") {
 			canvas.getElement('diffRadio').text = "STANDARD";
 			canvas.getElement('diffText1').text = "Mass multiplier x1.0";
 			canvas.getElement('diffText2').text = "Map Radius: 8";
+			canvas.getElement('diffText3').text = "Mass exchange rate 0.06%";
+			InitGame.inst.massExchangeRate = 0.06;
 		}
 		else {
 			canvas.getElement('diffRadio').text = "EASY";
 			canvas.getElement('diffText1').text = "Mass multiplier x1.5";
 			canvas.getElement('diffText2').text = "Map Radius: 10";
+			canvas.getElement('diffText3').text = "Mass exchange rate 0.08%";
+			InitGame.inst.massExchangeRate = 0.08;
 		}
 	}
 }
