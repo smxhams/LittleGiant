@@ -1,4 +1,6 @@
 package arm;
+import iron.math.Quat;
+import iron.object.MeshObject;
 import iron.math.Vec4;
 import iron.Scene;
 import iron.system.Input;
@@ -11,14 +13,20 @@ class MainGame extends iron.Trait {
 	var keyboard:Keyboard;
 	var mouse:Mouse;
 	var canvas:CanvasScript;
+	var data = InitGame.inst.hexTilesData;
 
 	var lastHover:Int;
+	var clickStart:Int;
+	var tempObj:Object;
 	//Cam
 	var camSpeed:Float = 0.5;
 	var camX:Float;
 	var camY:Float;
 
 	var v = new Vec4();
+	var v1 = new Vec4();
+	var v2 = new Vec4();
+	var q = new Quat();
 
 	public function new() {
 		super();
@@ -44,7 +52,35 @@ class MainGame extends iron.Trait {
 			camControl();
 			mouseOver();
 			if (canvas.getElement('contHexValues').visible == true) hexValuePos();
-			
+			if (mouse.started('left')) {
+				clickStart = lastHover;
+				iron.Scene.active.spawnObject('contArrow', null, function(o:Object) {
+					o.transform.loc.x = data[clickStart][0].o.transform.loc.x;
+					o.transform.loc.y = data[clickStart][0].o.transform.loc.y;
+					o.transform.loc.z = 0.0;
+					o.transform.buildMatrix();
+					tempObj = o;
+				});
+				
+			}
+			else if (mouse.down('left')) {
+				if (data[clickStart][0].n.indexOf(lastHover) != -1 && lastHover != null) {
+					if (tempObj.children[0]!=null) tempObj.children[0].visible = true;
+					
+					v1.set(-1,0,0);
+					v2.setFrom(data[lastHover][0].o.transform.loc).sub(tempObj.transform.loc).normalize();
+					q.fromTo(v1,v2);
+					tempObj.transform.rot = q;
+					tempObj.transform.buildMatrix();
+				}
+				else if (tempObj.children[0]!=null) tempObj.children[0].visible = false;
+				//trace(mouse.x + " x " + mouse.y);
+			}
+			else if (mouse.released('left')) {
+				//tempObj.remove();
+				tempObj = null;
+				clickStart = null;
+			}
 
 		});
 
