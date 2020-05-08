@@ -442,32 +442,29 @@ var arm_GenerateGame = function() {
 				while(_g3 < _g12) {
 					var s = _g3++;
 					if(q + r + s == 0) {
-						if(q == 0 && r == 0 && s == 0) {
-							arm_InitGame.inst.homeIndex = index;
-							temp = [{ i : index, x : q, y : r, z : s, t : -1, v : 1000, p : 1000, o : null, n : null}];
-							data.push(temp);
-						} else {
-							distance = (Math.abs(q) + Math.abs(r) + Math.abs(s)) / 2 | 0;
-							temp = [{ i : index, x : q, y : r, z : s, t : Std.random(20), v : 1750 * (Math.random() + 0.5) | 0, p : 0, o : null, n : null}];
-							data.push(temp);
-						}
+						distance = (Math.abs(q) + Math.abs(r) + Math.abs(s)) / 2 | 0;
+						temp = [{ i : index, x : q, y : r, z : s, t : Std.random(20), v : 1750 * (Math.random() + 0.5) | 0, p : 0, o : null, n : null}];
+						data.push(temp);
 						++index;
 					}
 				}
 			}
 		}
 		arm_InitGame.inst.totalTiles = index;
+		arm_InitGame.inst.homeIndex = Std.random(index);
+		data[arm_InitGame.inst.homeIndex][0].v = 1000;
+		data[arm_InitGame.inst.homeIndex][0].p = 1000;
 		_gthis.totalTicks = index * 2;
 		_gthis.tickInterval = _gthis.totalTime / _gthis.totalTicks * _gthis.speed;
-		haxe_Log.trace("Generating Game. Tick interval: " + _gthis.tickInterval,{ fileName : "arm/GenerateGame.hx", lineNumber : 50, className : "arm.GenerateGame", methodName : "new"});
-		haxe_Log.trace("TotalTicks :" + _gthis.totalTicks,{ fileName : "arm/GenerateGame.hx", lineNumber : 51, className : "arm.GenerateGame", methodName : "new"});
-		haxe_Log.trace("Total hexagons: " + index,{ fileName : "arm/GenerateGame.hx", lineNumber : 52, className : "arm.GenerateGame", methodName : "new"});
+		haxe_Log.trace("Generating Game. Tick interval: " + _gthis.tickInterval,{ fileName : "arm/GenerateGame.hx", lineNumber : 46, className : "arm.GenerateGame", methodName : "new"});
+		haxe_Log.trace("TotalTicks :" + _gthis.totalTicks,{ fileName : "arm/GenerateGame.hx", lineNumber : 47, className : "arm.GenerateGame", methodName : "new"});
+		haxe_Log.trace("Total hexagons: " + index,{ fileName : "arm/GenerateGame.hx", lineNumber : 48, className : "arm.GenerateGame", methodName : "new"});
 	});
 	this.notifyOnUpdate(function() {
-		var camera = iron_Scene.active.getChild("Camera");
-		iron_system_Tween.to({ target : camera.transform, props : { loc : new iron_math_Vec4(0.0,-arm_InitGame.inst.camDistance * 0.75,arm_InitGame.inst.camDistance)}, duration : _gthis.totalTime, done : function() {
-		}, ease : 18});
 		var data1 = arm_InitGame.inst.hexTilesData;
+		var camera = iron_Scene.active.getChild("Camera");
+		iron_system_Tween.to({ target : camera.transform, props : { loc : new iron_math_Vec4(Math.sqrt(3) * data1[arm_InitGame.inst.homeIndex][0].x + Math.sqrt(3) / 2 * data1[arm_InitGame.inst.homeIndex][0].y,1.5 * data1[arm_InitGame.inst.homeIndex][0].y - arm_InitGame.inst.camDistance * 0.75,arm_InitGame.inst.camDistance)}, duration : _gthis.totalTime, done : function() {
+		}, ease : 18});
 		while(_gthis.currentTick <= _gthis.totalTicks && _gthis.currentTime > _gthis.currentTick * _gthis.tickInterval) {
 			if(_gthis.currentTick < arm_InitGame.inst.totalTiles) {
 				iron_Scene.active.spawnObject("contHex",null,(function() {
