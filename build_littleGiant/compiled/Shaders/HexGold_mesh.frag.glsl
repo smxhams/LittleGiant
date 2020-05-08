@@ -10,7 +10,7 @@ vec3 n = normalize(wnormal);
 	float metallic;
 	float occlusion;
 	float specular;
-	basecol = vec3(0.800000011920929, 0.800000011920929, 0.800000011920929);
+	basecol = vec3(0.8000000715255737, 0.2837159335613251, 0.0);
 	roughness = 1.0;
 	metallic = 0.0;
 	occlusion = 1.0;

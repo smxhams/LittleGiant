@@ -72,7 +72,7 @@ class GenerateGame extends iron.Trait {
 			var data = InitGame.inst.hexTilesData;
 			while ((currentTick <= totalTicks) && (currentTime > (currentTick*tickInterval))) {
 				// First half place tiles
-				if (currentTick < InitGame.inst.totalTiles) {
+				if (currentTick < InitGame.inst.totalTiles) {// Spawning hexagon grid
 					iron.Scene.active.spawnObject('contHex', null, function(o:Object) {
 						o.transform.loc.x = 1*(Math.sqrt(3)*data[currentTick][0].x + Math.sqrt(3)/2*data[currentTick][0].y);
 						o.transform.loc.y = 1*(3/2*data[currentTick][0].y);
@@ -81,6 +81,16 @@ class GenerateGame extends iron.Trait {
 						InitGame.inst.hexTilesObjects.add(o);
 						o.properties['id'] = data[currentTick][0].i;
 					});
+					if (currentTick == InitGame.inst.homeIndex) {
+						iron.Scene.active.spawnObject('contHexGold', null, function(o:Object) {
+							o.transform.loc.x = 1*(Math.sqrt(3)*data[currentTick][0].x + Math.sqrt(3)/2*data[currentTick][0].y);
+							o.transform.loc.y = 1*(3/2*data[currentTick][0].y);
+							o.transform.loc.z = 0.0;
+							o.transform.buildMatrix();
+							InitGame.inst.hexTilesObjects.add(o);
+							o.properties['id'] = data[currentTick][0].i;
+						});
+					}
 				}
 
 				// Second half place type objects
@@ -132,7 +142,7 @@ class GenerateGame extends iron.Trait {
 				}
 			}
 			d[0].n = nTemp;
-			trace(d[0].n);
+			//trace(d[0].n);
 		}
 	}
 }
