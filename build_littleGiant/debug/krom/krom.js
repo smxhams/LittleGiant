@@ -714,209 +714,7 @@ var arm_MainGame = function() {
 		if(_gthis.canvas.getElement("contHexValues").visible == true) {
 			_gthis.hexValuePos();
 		}
-		if(_gthis.mouse.started("left") && _gthis.lastHover != null && _gthis.lastHover != arm_InitGame.inst.homeIndex) {
-			_gthis.clickStart = _gthis.lastHover;
-			iron_Scene.active.spawnObject("contArrow",null,function(o1) {
-				o1.transform.loc.x = _gthis.data[_gthis.clickStart][0].o.transform.loc.x;
-				o1.transform.loc.y = _gthis.data[_gthis.clickStart][0].o.transform.loc.y;
-				o1.transform.loc.z = 0.0;
-				o1.transform.buildMatrix();
-				_gthis.tempObj = o1;
-			});
-		} else if(_gthis.mouse.down("left") && _gthis.lastHover != null && _gthis.clickStart != null) {
-			if(_gthis.data[_gthis.clickStart][0].n.indexOf(_gthis.lastHover) != -1 && _gthis.lastHover != null) {
-				if(_gthis.tempObj.children[0] != null) {
-					_gthis.tempObj.children[0].visible = true;
-				}
-				if(_gthis.data[_gthis.clickStart][0].outO != null) {
-					_gthis.data[_gthis.clickStart][0].outO.children[0].visible = false;
-				}
-				var _this = _gthis.v1;
-				_this.x = -1;
-				_this.y = 0;
-				_this.z = 0;
-				_this.w = 1.0;
-				var _this1 = _gthis.v2;
-				var v = _gthis.data[_gthis.lastHover][0].o.transform.loc;
-				_this1.x = v.x;
-				_this1.y = v.y;
-				_this1.z = v.z;
-				_this1.w = v.w;
-				var _this2 = _this1;
-				var v1 = _gthis.tempObj.transform.loc;
-				_this2.x -= v1.x;
-				_this2.y -= v1.y;
-				_this2.z -= v1.z;
-				var _this3 = _this2;
-				var n = Math.sqrt(_this3.x * _this3.x + _this3.y * _this3.y + _this3.z * _this3.z);
-				if(n > 0.0) {
-					var invN = 1.0 / n;
-					_this3.x *= invN;
-					_this3.y *= invN;
-					_this3.z *= invN;
-				}
-				var _this4 = _gthis.q;
-				var v11 = _gthis.v1;
-				var v2 = _gthis.v2;
-				var a = iron_math_Quat.helpVec0;
-				var dot = v11.x * v2.x + v11.y * v2.y + v11.z * v2.z;
-				if(dot < -0.999999) {
-					var a1 = iron_math_Quat.xAxis;
-					var ax = a1.x;
-					var ay = a1.y;
-					var az = a1.z;
-					var bx = v11.x;
-					var by = v11.y;
-					var bz = v11.z;
-					a.x = ay * bz - az * by;
-					a.y = az * bx - ax * bz;
-					a.z = ax * by - ay * bx;
-					if(Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z) < 0.000001) {
-						var a2 = iron_math_Quat.yAxis;
-						var ax1 = a2.x;
-						var ay1 = a2.y;
-						var az1 = a2.z;
-						var bx1 = v11.x;
-						var by1 = v11.y;
-						var bz1 = v11.z;
-						a.x = ay1 * bz1 - az1 * by1;
-						a.y = az1 * bx1 - ax1 * bz1;
-						a.z = ax1 * by1 - ay1 * bx1;
-					}
-					var n1 = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
-					if(n1 > 0.0) {
-						var invN1 = 1.0 / n1;
-						a.x *= invN1;
-						a.y *= invN1;
-						a.z *= invN1;
-					}
-					var angle = Math.PI;
-					var s = Math.sin(angle * 0.5);
-					_this4.x = a.x * s;
-					_this4.y = a.y * s;
-					_this4.z = a.z * s;
-					_this4.w = Math.cos(angle * 0.5);
-					var l = Math.sqrt(_this4.x * _this4.x + _this4.y * _this4.y + _this4.z * _this4.z + _this4.w * _this4.w);
-					if(l == 0.0) {
-						_this4.x = 0;
-						_this4.y = 0;
-						_this4.z = 0;
-						_this4.w = 0;
-					} else {
-						l = 1.0 / l;
-						_this4.x *= l;
-						_this4.y *= l;
-						_this4.z *= l;
-						_this4.w *= l;
-					}
-				} else if(dot > 0.999999) {
-					_this4.x = 0;
-					_this4.y = 0;
-					_this4.z = 0;
-					_this4.w = 1;
-				} else {
-					var ax2 = v11.x;
-					var ay2 = v11.y;
-					var az2 = v11.z;
-					var bx2 = v2.x;
-					var by2 = v2.y;
-					var bz2 = v2.z;
-					a.x = ay2 * bz2 - az2 * by2;
-					a.y = az2 * bx2 - ax2 * bz2;
-					a.z = ax2 * by2 - ay2 * bx2;
-					_this4.x = a.x;
-					_this4.y = a.y;
-					_this4.z = a.z;
-					_this4.w = 1 + dot;
-					var l1 = Math.sqrt(_this4.x * _this4.x + _this4.y * _this4.y + _this4.z * _this4.z + _this4.w * _this4.w);
-					if(l1 == 0.0) {
-						_this4.x = 0;
-						_this4.y = 0;
-						_this4.z = 0;
-						_this4.w = 0;
-					} else {
-						l1 = 1.0 / l1;
-						_this4.x *= l1;
-						_this4.y *= l1;
-						_this4.z *= l1;
-						_this4.w *= l1;
-					}
-				}
-				_gthis.tempObj.transform.rot = _gthis.q;
-				_gthis.tempObj.transform.buildMatrix();
-			} else if(_gthis.tempObj.children[0] != null) {
-				_gthis.tempObj.children[0].visible = false;
-				if(_gthis.data[_gthis.clickStart][0].outO != null) {
-					_gthis.data[_gthis.clickStart][0].outO.children[0].visible = true;
-				}
-			}
-		} else if(_gthis.mouse.released("left") && _gthis.lastHover != null && _gthis.clickStart != null) {
-			if(_gthis.data[_gthis.clickStart][0].n.indexOf(_gthis.lastHover) != -1 && _gthis.lastHover != null) {
-				if(_gthis.data[_gthis.clickStart][0].outO != null) {
-					_gthis.data[_gthis.clickStart][0].outO.remove();
-					var r = _gthis.data[_gthis.data[_gthis.clickStart][0].out][0].inI;
-					HxOverrides.remove(r,_gthis.clickStart);
-					_gthis.data[_gthis.data[_gthis.clickStart][0].out][0].inI = r;
-					_gthis.checkRings(_gthis.lastHover);
-				}
-				_gthis.data[_gthis.clickStart][0].out = _gthis.lastHover;
-				_gthis.data[_gthis.clickStart][0].outO = _gthis.tempObj;
-				_gthis.data[_gthis.lastHover][0].inI.push(_gthis.data[_gthis.clickStart][0].i);
-				var homeRouteCheck = false;
-				var out = _gthis.data[_gthis.clickStart][0].out;
-				var startOut = _gthis.data[_gthis.clickStart][0].out;
-				while(homeRouteCheck == false) {
-					if(out == null) {
-						homeRouteCheck = false;
-						haxe_Log.trace("Does not lead home",{ fileName : "arm/MainGame.hx", lineNumber : 107, className : "arm.MainGame", methodName : "new"});
-						break;
-					}
-					if(out == arm_InitGame.inst.homeIndex) {
-						haxe_Log.trace("Found Home",{ fileName : "arm/MainGame.hx", lineNumber : 112, className : "arm.MainGame", methodName : "new"});
-						var addRingsForward = true;
-						out = _gthis.data[_gthis.clickStart][0].i;
-						while(addRingsForward == true) {
-							if(_gthis.data[out][0].i == arm_InitGame.inst.homeIndex) {
-								addRingsForward = false;
-								break;
-							}
-							if(_gthis.data[out][0].ringO == null || _gthis.data[out][0].ringO.name != "contHexBlue") {
-								iron_Scene.active.spawnObject("contHexBlue",null,function(o2) {
-									o2.transform.loc.x = Math.sqrt(3) * _gthis.data[out][0].x + Math.sqrt(3) / 2 * _gthis.data[out][0].y;
-									o2.transform.loc.y = 1.5 * _gthis.data[out][0].y;
-									o2.transform.loc.z = 0.0;
-									o2.transform.buildMatrix();
-									arm_InitGame.inst.hexTilesObjects.add(o2);
-									var v3 = _gthis.data[out][0].i;
-									var _this5 = o2.properties;
-									var value = v3;
-									if(__map_reserved["id"] != null) {
-										_this5.setReserved("id",value);
-									} else {
-										_this5.h["id"] = value;
-									}
-									_gthis.data[out][0].ringO = o2;
-								});
-							}
-							out = _gthis.data[out][0].out;
-						}
-						_gthis.addRingsBackward(_gthis.data[_gthis.clickStart][0].i);
-						homeRouteCheck = true;
-						break;
-					}
-					out = _gthis.data[out][0].out;
-					if(out == startOut) {
-						homeRouteCheck = false;
-						haxe_Log.trace("Loop detected",{ fileName : "arm/MainGame.hx", lineNumber : 141, className : "arm.MainGame", methodName : "new"});
-						break;
-					}
-				}
-			} else if(_gthis.tempObj.children[0] != null) {
-				_gthis.tempObj.children[0].visible = false;
-			}
-			_gthis.clickStart = null;
-			_gthis.tempObj = null;
-		}
+		_gthis.clickDrag();
 	});
 };
 $hxClasses["arm.MainGame"] = arm_MainGame;
@@ -1167,6 +965,215 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 			}
 		}
 	}
+	,clickDrag: function() {
+		var _gthis = this;
+		if(this.mouse.started("left") && this.lastHover != null && this.lastHover != arm_InitGame.inst.homeIndex) {
+			this.clickStart = this.lastHover;
+			iron_Scene.active.spawnObject("contArrow",null,function(o) {
+				o.transform.loc.x = _gthis.data[_gthis.clickStart][0].o.transform.loc.x;
+				o.transform.loc.y = _gthis.data[_gthis.clickStart][0].o.transform.loc.y;
+				o.transform.loc.z = 0.0;
+				o.transform.buildMatrix();
+				_gthis.tempObj = o;
+			});
+		} else if(this.mouse.down("left") && this.lastHover != null && this.clickStart != null) {
+			if(this.data[this.clickStart][0].n.indexOf(this.lastHover) != -1 && this.lastHover != null) {
+				if(this.tempObj.children[0] != null) {
+					this.tempObj.children[0].visible = true;
+				}
+				if(this.data[this.clickStart][0].outO != null) {
+					this.data[this.clickStart][0].outO.children[0].visible = false;
+				}
+				var _this = this.v1;
+				_this.x = -1;
+				_this.y = 0;
+				_this.z = 0;
+				_this.w = 1.0;
+				var _this1 = this.v2;
+				var v = this.data[this.lastHover][0].o.transform.loc;
+				_this1.x = v.x;
+				_this1.y = v.y;
+				_this1.z = v.z;
+				_this1.w = v.w;
+				var _this2 = _this1;
+				var v1 = this.tempObj.transform.loc;
+				_this2.x -= v1.x;
+				_this2.y -= v1.y;
+				_this2.z -= v1.z;
+				var _this3 = _this2;
+				var n = Math.sqrt(_this3.x * _this3.x + _this3.y * _this3.y + _this3.z * _this3.z);
+				if(n > 0.0) {
+					var invN = 1.0 / n;
+					_this3.x *= invN;
+					_this3.y *= invN;
+					_this3.z *= invN;
+				}
+				var _this4 = this.q;
+				var v11 = this.v1;
+				var v2 = this.v2;
+				var a = iron_math_Quat.helpVec0;
+				var dot = v11.x * v2.x + v11.y * v2.y + v11.z * v2.z;
+				if(dot < -0.999999) {
+					var a1 = iron_math_Quat.xAxis;
+					var ax = a1.x;
+					var ay = a1.y;
+					var az = a1.z;
+					var bx = v11.x;
+					var by = v11.y;
+					var bz = v11.z;
+					a.x = ay * bz - az * by;
+					a.y = az * bx - ax * bz;
+					a.z = ax * by - ay * bx;
+					if(Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z) < 0.000001) {
+						var a2 = iron_math_Quat.yAxis;
+						var ax1 = a2.x;
+						var ay1 = a2.y;
+						var az1 = a2.z;
+						var bx1 = v11.x;
+						var by1 = v11.y;
+						var bz1 = v11.z;
+						a.x = ay1 * bz1 - az1 * by1;
+						a.y = az1 * bx1 - ax1 * bz1;
+						a.z = ax1 * by1 - ay1 * bx1;
+					}
+					var n1 = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+					if(n1 > 0.0) {
+						var invN1 = 1.0 / n1;
+						a.x *= invN1;
+						a.y *= invN1;
+						a.z *= invN1;
+					}
+					var angle = Math.PI;
+					var s = Math.sin(angle * 0.5);
+					_this4.x = a.x * s;
+					_this4.y = a.y * s;
+					_this4.z = a.z * s;
+					_this4.w = Math.cos(angle * 0.5);
+					var l = Math.sqrt(_this4.x * _this4.x + _this4.y * _this4.y + _this4.z * _this4.z + _this4.w * _this4.w);
+					if(l == 0.0) {
+						_this4.x = 0;
+						_this4.y = 0;
+						_this4.z = 0;
+						_this4.w = 0;
+					} else {
+						l = 1.0 / l;
+						_this4.x *= l;
+						_this4.y *= l;
+						_this4.z *= l;
+						_this4.w *= l;
+					}
+				} else if(dot > 0.999999) {
+					_this4.x = 0;
+					_this4.y = 0;
+					_this4.z = 0;
+					_this4.w = 1;
+				} else {
+					var ax2 = v11.x;
+					var ay2 = v11.y;
+					var az2 = v11.z;
+					var bx2 = v2.x;
+					var by2 = v2.y;
+					var bz2 = v2.z;
+					a.x = ay2 * bz2 - az2 * by2;
+					a.y = az2 * bx2 - ax2 * bz2;
+					a.z = ax2 * by2 - ay2 * bx2;
+					_this4.x = a.x;
+					_this4.y = a.y;
+					_this4.z = a.z;
+					_this4.w = 1 + dot;
+					var l1 = Math.sqrt(_this4.x * _this4.x + _this4.y * _this4.y + _this4.z * _this4.z + _this4.w * _this4.w);
+					if(l1 == 0.0) {
+						_this4.x = 0;
+						_this4.y = 0;
+						_this4.z = 0;
+						_this4.w = 0;
+					} else {
+						l1 = 1.0 / l1;
+						_this4.x *= l1;
+						_this4.y *= l1;
+						_this4.z *= l1;
+						_this4.w *= l1;
+					}
+				}
+				this.tempObj.transform.rot = this.q;
+				this.tempObj.transform.buildMatrix();
+			} else if(this.tempObj.children[0] != null) {
+				this.tempObj.children[0].visible = false;
+				if(this.data[this.clickStart][0].outO != null) {
+					this.data[this.clickStart][0].outO.children[0].visible = true;
+				}
+			}
+		} else if(this.mouse.released("left") && this.lastHover != null && this.clickStart != null) {
+			if(this.data[this.clickStart][0].n.indexOf(this.lastHover) != -1 && this.lastHover != null) {
+				if(this.data[this.clickStart][0].outO != null) {
+					this.data[this.clickStart][0].outO.remove();
+					var r = this.data[this.data[this.clickStart][0].out][0].inI;
+					HxOverrides.remove(r,this.clickStart);
+					this.data[this.data[this.clickStart][0].out][0].inI = r;
+				}
+				this.data[this.clickStart][0].out = this.lastHover;
+				this.data[this.clickStart][0].outO = this.tempObj;
+				this.data[this.lastHover][0].inI.push(this.data[this.clickStart][0].i);
+				var homeRouteCheck = false;
+				var out = this.data[this.clickStart][0].out;
+				var startOut = this.data[this.clickStart][0].out;
+				while(homeRouteCheck == false) {
+					if(out == null) {
+						homeRouteCheck = true;
+						haxe_Log.trace("Does not lead home",{ fileName : "arm/MainGame.hx", lineNumber : 264, className : "arm.MainGame", methodName : "clickDrag"});
+						this.checkRings(this.clickStart);
+						break;
+					}
+					if(out == arm_InitGame.inst.homeIndex) {
+						haxe_Log.trace("Found Home",{ fileName : "arm/MainGame.hx", lineNumber : 271, className : "arm.MainGame", methodName : "clickDrag"});
+						var addRingsForward = true;
+						out = this.data[this.clickStart][0].i;
+						while(addRingsForward == true) {
+							if(this.data[out][0].i == arm_InitGame.inst.homeIndex) {
+								addRingsForward = false;
+								break;
+							}
+							if(this.data[out][0].ringO == null || this.data[out][0].ringO.name != "contHexBlue") {
+								haxe_Log.trace("Adding Rings forward",{ fileName : "arm/MainGame.hx", lineNumber : 280, className : "arm.MainGame", methodName : "clickDrag"});
+								iron_Scene.active.spawnObject("contHexBlue",null,function(o1) {
+									o1.transform.loc.x = Math.sqrt(3) * _gthis.data[out][0].x + Math.sqrt(3) / 2 * _gthis.data[out][0].y;
+									o1.transform.loc.y = 1.5 * _gthis.data[out][0].y;
+									o1.transform.loc.z = 0.0;
+									o1.transform.buildMatrix();
+									arm_InitGame.inst.hexTilesObjects.add(o1);
+									var v3 = _gthis.data[out][0].i;
+									var _this5 = o1.properties;
+									var value = v3;
+									if(__map_reserved["id"] != null) {
+										_this5.setReserved("id",value);
+									} else {
+										_this5.h["id"] = value;
+									}
+									_gthis.data[out][0].ringO = o1;
+								});
+							} else if(this.data[out][0].ringO != null && this.data[out][0].ringO.name == "contHexBlue" && this.data[out][0].ringO.children[0].visible == false) {
+								this.data[out][0].ringO.children[0].visible = true;
+							}
+							out = this.data[out][0].out;
+						}
+						this.addRingsBackward(this.data[this.clickStart][0].i);
+						homeRouteCheck = true;
+						break;
+					}
+					out = this.data[out][0].out;
+					if(out == startOut) {
+						homeRouteCheck = true;
+						haxe_Log.trace("Loop detected",{ fileName : "arm/MainGame.hx", lineNumber : 302, className : "arm.MainGame", methodName : "clickDrag"});
+						break;
+					}
+				}
+			} else if(this.tempObj.children[0] != null) {
+				this.tempObj.children[0].visible = false;
+			}
+			this.clickStart = null;
+			this.tempObj = null;
+		}
+	}
 	,addRingsBackward: function(inHex) {
 		var _gthis = this;
 		if(this.data[inHex][0].inI != []) {
@@ -1176,6 +1183,7 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 				var i = _g++;
 				var input = [this.data[inHex][0].inI[i]];
 				if(this.data[input[0]][0].ringO == null || this.data[input[0]][0].ringO.name != "contHexBlue") {
+					haxe_Log.trace("Adding rings backwards",{ fileName : "arm/MainGame.hx", lineNumber : 318, className : "arm.MainGame", methodName : "addRingsBackward"});
 					iron_Scene.active.spawnObject("contHexBlue",null,(function(input1) {
 						return function(o) {
 							o.transform.loc.x = Math.sqrt(3) * _gthis.data[input1[0]][0].x + Math.sqrt(3) / 2 * _gthis.data[input1[0]][0].y;
@@ -1194,18 +1202,23 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 							_gthis.data[input1[0]][0].ringO = o;
 						};
 					})(input));
+				} else if(this.data[input[0]][0].ringO != null && this.data[input[0]][0].ringO.name == "contHexBlue" && this.data[input[0]][0].ringO.children[0].visible == false) {
+					this.data[input[0]][0].ringO.children[0].visible = true;
 				}
 				if(this.data[input[0]][0].inI != []) {
 					this.addRingsBackward(this.data[input[0]][0].i);
 				}
 			}
-			haxe_Log.trace(this.data[inHex][0].inI,{ fileName : "arm/MainGame.hx", lineNumber : 319, className : "arm.MainGame", methodName : "addRingsBackward"});
 		}
 	}
 	,checkRings: function(hex) {
-		if(this.data[hex][0].ringO != null) {
-			this.data[hex][0].ringO.remove();
-			this.data[hex][0].ringO = null;
+		haxe_Log.trace(hex,{ fileName : "arm/MainGame.hx", lineNumber : 337, className : "arm.MainGame", methodName : "checkRings"});
+		if(this.data[hex][0].ringO != null && this.data[hex][0].ringO.name == "contHexBlue") {
+			var rObj = this.data[hex][0].ringO;
+			haxe_Log.trace(hex + "I have a ring",{ fileName : "arm/MainGame.hx", lineNumber : 340, className : "arm.MainGame", methodName : "checkRings"});
+			if(this.data[hex][0].ringO.children[0] != null) {
+				this.data[hex][0].ringO.children[0].visible = false;
+			}
 		}
 		if(this.data[hex][0].inI != []) {
 			var _g = 0;
@@ -1217,7 +1230,6 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 					this.checkRings(this.data[input][0].i);
 				}
 			}
-			haxe_Log.trace(this.data[hex][0].inI,{ fileName : "arm/MainGame.hx", lineNumber : 333, className : "arm.MainGame", methodName : "checkRings"});
 		}
 	}
 	,__class__: arm_MainGame

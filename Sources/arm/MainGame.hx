@@ -54,99 +54,8 @@ class MainGame extends iron.Trait {
 			mouseOver();
 			massCalc();
 			if (canvas.getElement('contHexValues').visible == true) hexValuePos();
-
-			// Clicking and dragging to direct flow
-			if (mouse.started('left') && lastHover != null && lastHover != InitGame.inst.homeIndex) {
-				clickStart = lastHover;
-				iron.Scene.active.spawnObject('contArrow', null, function(o:Object) {
-					o.transform.loc.x = data[clickStart][0].o.transform.loc.x;
-					o.transform.loc.y = data[clickStart][0].o.transform.loc.y;
-					o.transform.loc.z = 0.0;
-					o.transform.buildMatrix();
-					tempObj = o;
-				});
-				
-			}
-			else if (mouse.down('left') && lastHover != null && clickStart != null) {
-				if (data[clickStart][0].n.indexOf(lastHover) != -1 && lastHover != null) {
-					if (tempObj.children[0]!=null) tempObj.children[0].visible = true;
-					if (data[clickStart][0].outO != null) data[clickStart][0].outO.children[0].visible = false;
-					v1.set(-1,0,0);
-					v2.setFrom(data[lastHover][0].o.transform.loc).sub(tempObj.transform.loc).normalize();
-					q.fromTo(v1,v2);
-					tempObj.transform.rot = q;
-					tempObj.transform.buildMatrix();
-				}
-				else if (tempObj.children[0]!=null) {
-					tempObj.children[0].visible = false;
-					if (data[clickStart][0].outO != null) data[clickStart][0].outO.children[0].visible = true;
-				}
-				//trace(mouse.x + " x " + mouse.y);
-			}
-			else if (mouse.released('left') && lastHover != null && clickStart != null) {
-				if (data[clickStart][0].n.indexOf(lastHover) != -1 && lastHover != null) { //If neighbor, create link
-					if (data[clickStart][0].outO != null) { // If reassinging a pre-existing link
-						data[clickStart][0].outO.remove(); //Remove link
-						var r:Array<Int> = data[data[clickStart][0].out][0].inI;
-						r.remove(clickStart);
-						data[data[clickStart][0].out][0].inI = r; //Removes input on old output
-						checkRings(lastHover); // Will take away blue rings if no longer leading home
-					}
-					data[clickStart][0].out = lastHover;
-					data[clickStart][0].outO = tempObj;
-					data[lastHover][0].inI.push(data[clickStart][0].i);
-
-
-					// Check if route leads home.
-					var homeRouteCheck = false;
-					var out = data[clickStart][0].out;
-					var startOut = data[clickStart][0].out;
-					while (homeRouteCheck == false) {
-						if (out == null) {
-							homeRouteCheck = false;
-							trace('Does not lead home');
-							break;
-						}
-						
-						if (out == InitGame.inst.homeIndex) {
-							trace('Found Home');
-							var addRingsForward = true;
-							out = data[clickStart][0].i;
-							while (addRingsForward == true) {
-								if (data[out][0].i == InitGame.inst.homeIndex) {
-									addRingsForward = false;
-									break;
-								}
-								if (data[out][0].ringO == null || data[out][0].ringO.name != 'contHexBlue') {
-									iron.Scene.active.spawnObject('contHexBlue', null, function(o:Object) {
-										o.transform.loc.x = 1*(Math.sqrt(3)*data[out][0].x + Math.sqrt(3)/2*data[out][0].y);
-										o.transform.loc.y = 1*(3/2*data[out][0].y);
-										o.transform.loc.z = 0.0;
-										o.transform.buildMatrix();
-										InitGame.inst.hexTilesObjects.add(o);
-										o.properties['id'] = data[out][0].i;
-										data[out][0].ringO = o;
-									});
-								}
-								out = data[out][0].out;
-							}
-							addRingsBackward(data[clickStart][0].i);
-
-							homeRouteCheck = true;
-							break;
-						}
-						out = data[out][0].out;
-						if (out == startOut){
-							homeRouteCheck = false;
-							trace('Loop detected');
-							break;
-						}
-					}
-				}
-				else if (tempObj.children[0]!=null) tempObj.children[0].visible = false;
-				clickStart = null;
-				tempObj = null;
-			}
+			clickDrag();
+			
 
 		});
 
@@ -292,6 +201,7 @@ class MainGame extends iron.Trait {
 			canvas.getElement("hexValue7").visible = false;
 		}
 	}
+
 	function massCalc() {
 		for (i in data) {
 			if (i[0].out != null) {
@@ -299,11 +209,113 @@ class MainGame extends iron.Trait {
 			}
 		}
 	}
+
+	function clickDrag() {
+		// Clicking and dragging to direct flow
+		if (mouse.started('left') && lastHover != null && lastHover != InitGame.inst.homeIndex) {
+			clickStart = lastHover;
+			iron.Scene.active.spawnObject('contArrow', null, function(o:Object) {
+				o.transform.loc.x = data[clickStart][0].o.transform.loc.x;
+				o.transform.loc.y = data[clickStart][0].o.transform.loc.y;
+				o.transform.loc.z = 0.0;
+				o.transform.buildMatrix();
+				tempObj = o;
+			});
+			
+		}
+		else if (mouse.down('left') && lastHover != null && clickStart != null) {
+			if (data[clickStart][0].n.indexOf(lastHover) != -1 && lastHover != null) {
+				if (tempObj.children[0]!=null) tempObj.children[0].visible = true;
+				if (data[clickStart][0].outO != null) data[clickStart][0].outO.children[0].visible = false;
+				v1.set(-1,0,0);
+				v2.setFrom(data[lastHover][0].o.transform.loc).sub(tempObj.transform.loc).normalize();
+				q.fromTo(v1,v2);
+				tempObj.transform.rot = q;
+				tempObj.transform.buildMatrix();
+			}
+			else if (tempObj.children[0]!=null) {
+				tempObj.children[0].visible = false;
+				if (data[clickStart][0].outO != null) data[clickStart][0].outO.children[0].visible = true;
+			}
+			//trace(mouse.x + " x " + mouse.y);
+		}
+		else if (mouse.released('left') && lastHover != null && clickStart != null) {
+			if (data[clickStart][0].n.indexOf(lastHover) != -1 && lastHover != null) { //If neighbor, create link
+				if (data[clickStart][0].outO != null) { // If reassinging a pre-existing link
+					data[clickStart][0].outO.remove(); //Remove link
+					var r:Array<Int> = data[data[clickStart][0].out][0].inI;
+					r.remove(clickStart);
+					data[data[clickStart][0].out][0].inI = r; //Removes input on old output
+					//checkRings(clickStart); // Will take away blue rings if no longer leading home
+				}
+				data[clickStart][0].out = lastHover;
+				data[clickStart][0].outO = tempObj;
+				data[lastHover][0].inI.push(data[clickStart][0].i);
+
+
+
+				// Check if route leads home.
+				var homeRouteCheck = false;
+				var out = data[clickStart][0].out;
+				var startOut = data[clickStart][0].out;
+				while (homeRouteCheck == false) {
+					if (out == null) {
+						homeRouteCheck = true;
+						trace('Does not lead home');
+
+						checkRings(clickStart);
+						break;
+					}
+					
+					if (out == InitGame.inst.homeIndex) {
+						trace('Found Home');
+						var addRingsForward = true;
+						out = data[clickStart][0].i;
+						while (addRingsForward == true) {
+							if (data[out][0].i == InitGame.inst.homeIndex) {
+								addRingsForward = false;
+								break;
+							}
+							if (data[out][0].ringO == null || data[out][0].ringO.name != 'contHexBlue') {
+								trace('Adding Rings forward');
+								iron.Scene.active.spawnObject('contHexBlue', null, function(o:Object) {
+									o.transform.loc.x = 1*(Math.sqrt(3)*data[out][0].x + Math.sqrt(3)/2*data[out][0].y);
+									o.transform.loc.y = 1*(3/2*data[out][0].y);
+									o.transform.loc.z = 0.0;
+									o.transform.buildMatrix();
+									InitGame.inst.hexTilesObjects.add(o);
+									o.properties['id'] = data[out][0].i;
+									data[out][0].ringO = o;
+								});
+							}
+							else if (data[out][0].ringO != null && data[out][0].ringO.name == 'contHexBlue' && data[out][0].ringO.children[0].visible == false) data[out][0].ringO.children[0].visible = true;
+							out = data[out][0].out;
+						}
+						addRingsBackward(data[clickStart][0].i);
+
+						homeRouteCheck = true;
+						break;
+					}
+					out = data[out][0].out;
+					if (out == startOut){
+						homeRouteCheck = true;
+						trace('Loop detected');
+						break;
+					}
+				}
+			}
+			else if (tempObj.children[0]!=null) tempObj.children[0].visible = false;
+			clickStart = null;
+			tempObj = null;
+		}
+	}
+
 	function addRingsBackward(inHex:Int) {
 		if (data[inHex][0].inI != []) {
 			for (i in 0...data[inHex][0].inI.length) {
 				var input = data[inHex][0].inI[i];
 				if (data[input][0].ringO == null || data[input][0].ringO.name != 'contHexBlue') {
+					trace('Adding rings backwards');
 					iron.Scene.active.spawnObject('contHexBlue', null, function(o:Object) {
 						o.transform.loc.x = 1*(Math.sqrt(3)*data[input][0].x + Math.sqrt(3)/2*data[input][0].y);
 						o.transform.loc.y = 1*(3/2*data[input][0].y);
@@ -314,23 +326,27 @@ class MainGame extends iron.Trait {
 						data[input][0].ringO = o;
 					});
 				}
+				else if (data[input][0].ringO != null && data[input][0].ringO.name == 'contHexBlue' && data[input][0].ringO.children[0].visible == false) data[input][0].ringO.children[0].visible = true;
+				
 				if (data[input][0].inI != []) addRingsBackward(data[input][0].i);
 			}
-			trace(data[inHex][0].inI);
 		}
 	}
 
 	function checkRings(hex:Int) {
-		if (data[hex][0].ringO != null) {
-			data[hex][0].ringO.remove();
-			data[hex][0].ringO = null;
+		trace(hex);
+		if (data[hex][0].ringO != null && data[hex][0].ringO.name == 'contHexBlue') {
+			var rObj:Object = data[hex][0].ringO;
+			trace(hex + 'I have a ring');
+			if (data[hex][0].ringO.children[0]!= null) data[hex][0].ringO.children[0].visible = false;
+			//data[hex][0].ringO = null;
 		}
 		if (data[hex][0].inI != []) {
 			for (i in 0...data[hex][0].inI.length) {
 				var input = data[hex][0].inI[i];
 				if (data[input][0].inI != []) checkRings(data[input][0].i);
 			}
-			trace(data[hex][0].inI);
+			//trace(data[hex][0].inI);
 		}
 	}
 
