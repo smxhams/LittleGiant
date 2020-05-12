@@ -59,23 +59,23 @@
 -D kha_version=1810
 -D kha_project_name=littleGiant
 -js krom\krom.js.temp
-arm.GenerateGame
---macro keep('arm.GenerateGame')
-arm.InitGame
---macro keep('arm.InitGame')
-armory.trait.internal.CanvasScript
---macro keep('armory.trait.internal.CanvasScript')
-armory.trait.physics.bullet.PhysicsWorld
---macro keep('armory.trait.physics.bullet.PhysicsWorld')
 arm.MainGame
 --macro keep('arm.MainGame')
-arm.MainMenu
---macro keep('arm.MainMenu')
-armory.trait.physics.bullet.RigidBody
---macro keep('armory.trait.physics.bullet.RigidBody')
+armory.trait.physics.bullet.PhysicsWorld
+--macro keep('armory.trait.physics.bullet.PhysicsWorld')
 armory.trait.internal.Bridge
 --macro keep('armory.trait.internal.Bridge')
 armory.trait.internal.DebugConsole
 --macro keep('armory.trait.internal.DebugConsole')
+arm.MainMenu
+--macro keep('arm.MainMenu')
+arm.InitGame
+--macro keep('arm.InitGame')
+arm.GenerateGame
+--macro keep('arm.GenerateGame')
+armory.trait.internal.CanvasScript
+--macro keep('armory.trait.internal.CanvasScript')
+armory.trait.physics.bullet.RigidBody
+--macro keep('armory.trait.physics.bullet.RigidBody')
 --times
 -main Main
