@@ -19,9 +19,12 @@ class MainMenu extends iron.Trait {
 
 			//Load Music1 channel (And play for main menu)
 			if (InitGame.inst.music1 == null) {
-				iron.data.Data.getSound('Music/BrightGalaxy.wav', function(sound:kha.Sound) {
+				var musicInt = Std.random(4)+1;
+				InitGame.inst.currentTrack = musicInt;
+				InitGame.inst.music1.stop()
+				iron.data.Data.getSound('Music/Track'+(musicInt)+".wav", function(sound:kha.Sound) {
 					//sound.sampleRate = 40200; // File is 44100, game is 48000, drop to 40200 to account for speed up.
-					InitGame.inst.music1 = iron.system.Audio.play(sound, true, true);
+					InitGame.inst.music1 = iron.system.Audio.play(sound, false, true);
 					InitGame.inst.music1.volume = 1.0; //Add settings multiplier here is relevant
 				});
 			}

@@ -24,7 +24,7 @@ class InitGame extends iron.Trait {
 
 	//Sound
 	public var music1:AudioChannel;
-	public var music2:AudioChannel;
+	public var currentTrack:Int;
 	public var sfx1:AudioChannel;
 	public var sfx2:AudioChannel;
 	public var ambience:AudioChannel;

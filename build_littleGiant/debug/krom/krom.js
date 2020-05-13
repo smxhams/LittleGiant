@@ -715,6 +715,17 @@ var arm_MainGame = function() {
 			_gthis.hexValuePos();
 		}
 		_gthis.clickDrag();
+		var music = arm_InitGame.inst.music1;
+		if(arm_InitGame.inst.music1.get_position() >= arm_InitGame.inst.music1.get_length() - 280.1) {
+			arm_InitGame.inst.music1.stop();
+			haxe_Log.trace("HEY",{ fileName : "arm/MainGame.hx", lineNumber : 63, className : "arm.MainGame", methodName : "new"});
+			arm_InitGame.inst.music1 = null;
+			iron_data_Data.getSound("Music/Track" + (Std.random(4) + 1) + ".wav",function(sound) {
+				arm_InitGame.inst.music1 = iron_system_Audio.play(sound,false,true);
+				arm_InitGame.inst.music1.set_volume(1.0);
+			});
+			haxe_Log.trace(music.get_length(),{ fileName : "arm/MainGame.hx", lineNumber : 70, className : "arm.MainGame", methodName : "new"});
+		}
 	});
 };
 $hxClasses["arm.MainGame"] = arm_MainGame;
@@ -1120,12 +1131,10 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 				while(homeRouteCheck == false) {
 					if(out == null) {
 						homeRouteCheck = true;
-						haxe_Log.trace("Does not lead home",{ fileName : "arm/MainGame.hx", lineNumber : 264, className : "arm.MainGame", methodName : "clickDrag"});
 						this.checkRings(this.clickStart);
 						break;
 					}
 					if(out == arm_InitGame.inst.homeIndex) {
-						haxe_Log.trace("Found Home",{ fileName : "arm/MainGame.hx", lineNumber : 271, className : "arm.MainGame", methodName : "clickDrag"});
 						var addRingsForward = true;
 						out = this.data[this.clickStart][0].i;
 						while(addRingsForward == true) {
@@ -1134,7 +1143,6 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 								break;
 							}
 							if(this.data[out][0].ringO == null || this.data[out][0].ringO.name != "contHexBlue") {
-								haxe_Log.trace("Adding Rings forward",{ fileName : "arm/MainGame.hx", lineNumber : 280, className : "arm.MainGame", methodName : "clickDrag"});
 								iron_Scene.active.spawnObject("contHexBlue",null,function(o1) {
 									o1.transform.loc.x = Math.sqrt(3) * _gthis.data[out][0].x + Math.sqrt(3) / 2 * _gthis.data[out][0].y;
 									o1.transform.loc.y = 1.5 * _gthis.data[out][0].y;
@@ -1163,7 +1171,8 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 					out = this.data[out][0].out;
 					if(out == startOut) {
 						homeRouteCheck = true;
-						haxe_Log.trace("Loop detected",{ fileName : "arm/MainGame.hx", lineNumber : 302, className : "arm.MainGame", methodName : "clickDrag"});
+						haxe_Log.trace("Loop detected",{ fileName : "arm/MainGame.hx", lineNumber : 312, className : "arm.MainGame", methodName : "clickDrag"});
+						this.checkRings(this.clickStart,this.clickStart);
 						break;
 					}
 				}
@@ -1183,7 +1192,6 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 				var i = _g++;
 				var input = [this.data[inHex][0].inI[i]];
 				if(this.data[input[0]][0].ringO == null || this.data[input[0]][0].ringO.name != "contHexBlue") {
-					haxe_Log.trace("Adding rings backwards",{ fileName : "arm/MainGame.hx", lineNumber : 318, className : "arm.MainGame", methodName : "addRingsBackward"});
 					iron_Scene.active.spawnObject("contHexBlue",null,(function(input1) {
 						return function(o) {
 							o.transform.loc.x = Math.sqrt(3) * _gthis.data[input1[0]][0].x + Math.sqrt(3) / 2 * _gthis.data[input1[0]][0].y;
@@ -1211,11 +1219,9 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 			}
 		}
 	}
-	,checkRings: function(hex) {
-		haxe_Log.trace(hex,{ fileName : "arm/MainGame.hx", lineNumber : 337, className : "arm.MainGame", methodName : "checkRings"});
+	,checkRings: function(hex,l) {
 		if(this.data[hex][0].ringO != null && this.data[hex][0].ringO.name == "contHexBlue") {
 			var rObj = this.data[hex][0].ringO;
-			haxe_Log.trace(hex + "I have a ring",{ fileName : "arm/MainGame.hx", lineNumber : 340, className : "arm.MainGame", methodName : "checkRings"});
 			if(this.data[hex][0].ringO.children[0] != null) {
 				this.data[hex][0].ringO.children[0].visible = false;
 			}
@@ -1226,8 +1232,8 @@ arm_MainGame.prototype = $extend(iron_Trait.prototype,{
 			while(_g < _g1) {
 				var i = _g++;
 				var input = this.data[hex][0].inI[i];
-				if(this.data[input][0].inI != []) {
-					this.checkRings(this.data[input][0].i);
+				if(this.data[input][0].inI != [] && this.data[input][0].i != l) {
+					this.checkRings(this.data[input][0].i,l);
 				}
 			}
 		}
@@ -1243,8 +1249,8 @@ var arm_MainMenu = function() {
 		_gthis.canvas = iron_Scene.active.getTrait(armory_trait_internal_CanvasScript);
 		_gthis.canvas.getElement("contMainMenu").visible = true;
 		if(arm_InitGame.inst.music1 == null) {
-			iron_data_Data.getSound("Music/BrightGalaxy.wav",function(sound) {
-				arm_InitGame.inst.music1 = iron_system_Audio.play(sound,true,true);
+			iron_data_Data.getSound("Music/Track" + (Std.random(4) + 1) + ".wav",function(sound) {
+				arm_InitGame.inst.music1 = iron_system_Audio.play(sound,false,true);
 				arm_InitGame.inst.music1.set_volume(1.0);
 			});
 		}

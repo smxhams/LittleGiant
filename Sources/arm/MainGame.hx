@@ -55,6 +55,24 @@ class MainGame extends iron.Trait {
 			massCalc();
 			if (canvas.getElement('contHexValues').visible == true) hexValuePos();
 			clickDrag();
+
+			var music = InitGame.inst.music1;
+			//trace(music.position);
+			if (InitGame.inst.music1.position >= (InitGame.inst.music1.length - 0.1)) {
+				InitGame.inst.music1.stop();
+				InitGame.inst.music1 = null;
+				var musicInt = Std.random(4)+1;
+				while (musicInt == InitGame.inst.currentTrack) {
+					musicInt = Std.random(4)+1;
+				}
+				InitGame.inst.currentTrack = musicInt;
+				iron.data.Data.getSound('Music/Track'+(Std.random(4)+1)+".wav", function(sound:kha.Sound) {
+					//sound.sampleRate = 40200; // File is 44100, game is 48000, drop to 40200 to account for speed up.
+					InitGame.inst.music1 = iron.system.Audio.play(sound, true, true);
+					InitGame.inst.music1.volume = 1.0; //Add settings multiplier here is relevant
+				});
+				trace(music.length);
+			}
 			
 
 		});
@@ -261,14 +279,11 @@ class MainGame extends iron.Trait {
 				while (homeRouteCheck == false) {
 					if (out == null) {
 						homeRouteCheck = true;
-						trace('Does not lead home');
-
 						checkRings(clickStart);
 						break;
 					}
 					
 					if (out == InitGame.inst.homeIndex) {
-						trace('Found Home');
 						var addRingsForward = true;
 						out = data[clickStart][0].i;
 						while (addRingsForward == true) {
@@ -277,7 +292,6 @@ class MainGame extends iron.Trait {
 								break;
 							}
 							if (data[out][0].ringO == null || data[out][0].ringO.name != 'contHexBlue') {
-								trace('Adding Rings forward');
 								iron.Scene.active.spawnObject('contHexBlue', null, function(o:Object) {
 									o.transform.loc.x = 1*(Math.sqrt(3)*data[out][0].x + Math.sqrt(3)/2*data[out][0].y);
 									o.transform.loc.y = 1*(3/2*data[out][0].y);
@@ -300,6 +314,7 @@ class MainGame extends iron.Trait {
 					if (out == startOut){
 						homeRouteCheck = true;
 						trace('Loop detected');
+						checkRings(clickStart, clickStart);
 						break;
 					}
 				}
@@ -315,7 +330,6 @@ class MainGame extends iron.Trait {
 			for (i in 0...data[inHex][0].inI.length) {
 				var input = data[inHex][0].inI[i];
 				if (data[input][0].ringO == null || data[input][0].ringO.name != 'contHexBlue') {
-					trace('Adding rings backwards');
 					iron.Scene.active.spawnObject('contHexBlue', null, function(o:Object) {
 						o.transform.loc.x = 1*(Math.sqrt(3)*data[input][0].x + Math.sqrt(3)/2*data[input][0].y);
 						o.transform.loc.y = 1*(3/2*data[input][0].y);
@@ -333,21 +347,19 @@ class MainGame extends iron.Trait {
 		}
 	}
 
-	function checkRings(hex:Int) {
-		trace(hex);
+	function checkRings(hex:Int, ?l:Int) {
 		if (data[hex][0].ringO != null && data[hex][0].ringO.name == 'contHexBlue') {
 			var rObj:Object = data[hex][0].ringO;
-			trace(hex + 'I have a ring');
 			if (data[hex][0].ringO.children[0]!= null) data[hex][0].ringO.children[0].visible = false;
 			//data[hex][0].ringO = null;
 		}
 		if (data[hex][0].inI != []) {
 			for (i in 0...data[hex][0].inI.length) {
 				var input = data[hex][0].inI[i];
-				if (data[input][0].inI != []) checkRings(data[input][0].i);
+				if (data[input][0].inI != [] && data[input][0].i != l) checkRings(data[input][0].i, l);
 			}
-			//trace(data[hex][0].inI);
 		}
+		
 	}
 
 }
